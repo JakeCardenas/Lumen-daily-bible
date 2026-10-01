@@ -1,0 +1,172 @@
+{
+  "moods": [
+    {
+      "id": "sad",
+      "label": "Sad",
+      "crisisLine": true,
+      "entries": [
+        {
+          "passage": {"book": "PSA", "ranges": [[33, 19, 33, 19]]},
+          "modernReference": "Psalm 34",
+          "reflection": "Sorrow can make God feel far away, yet this psalm says the opposite: the Lord is near to those whose hearts are broken. You do not need the right words or a steady heart to pray. Bring Him your sadness as it is, and let Him stay close to you in it.",
+          "prayer": "Lord, You are near to those whose hearts are heavy. Stay close to me today. Hold what I cannot carry, and let me rest in Your care. Amen."
+        },
+        {
+          "passage": {"book": "MAT", "ranges": [[11, 28, 11, 30]]},
+          "reflection": "Jesus does not wait for us to feel better before inviting us to come. He calls the weary and burdened just as they are. Rest with Him for a moment, and let His gentleness meet you where you are.",
+          "prayer": "Jesus, meek and humble of heart, I come to You tired and burdened. Give me Your rest, and teach me to carry each day with You. Amen."
+        },
+        {
+          "passage": {"book": "PSA", "ranges": [[41, 2, 41, 3], [41, 6, 41, 6]]},
+          "modernReference": "Psalm 42",
+          "reflection": "The psalmist speaks honestly to his own soul, naming its sadness instead of hiding it. Then he turns, gently, toward hope. Faith does not always remove sorrow, but it can hold sorrow and hope together.",
+          "prayer": "O God, my soul thirsts for You. When I am downcast, help me to hope in You, and to praise You even before I feel the light return. Amen."
+        },
+        {
+          "passage": {"book": "JHN", "ranges": [[16, 20, 16, 22]]},
+          "reflection": "Jesus spoke these words to friends who were about to grieve. He did not deny their sorrow; He promised that it would not have the last word. The joy He gives is one that no one can take away.",
+          "prayer": "Lord Jesus, You know every sorrow I carry. In Your time, turn my grief into a joy that no one can take from me. Amen."
+        },
+        {
+          "passage": {"book": "REV", "ranges": [[21, 3, 21, 5]]},
+          "reflection": "This is the promise at the end of the whole story: God Himself will wipe away every tear. Our sorrows are seen, and they are not forever. Today's sadness is held within that larger hope.",
+          "prayer": "Father, You see every tear. Strengthen me with the hope of the day when You will make all things new. Amen."
+        }
+      ]
+    },
+    {
+      "id": "anxious",
+      "label": "Anxious",
+      "crisisLine": false,
+      "entries": [
+        {
+          "passage": {"book": "PHP", "ranges": [[4, 6, 4, 7]]},
+          "reflection": "Paul does not tell us to stop caring; he tells us where to bring our cares. Name each worry before God, one by one, and thank Him for what He has already given. His peace can guard the heart even before circumstances change.",
+          "prayer": "Lord, I place every worry in Your hands. Guard my heart and mind with Your peace, which is greater than my understanding. Amen."
+        },
+        {
+          "passage": {"book": "MAT", "ranges": [[6, 31, 6, 34]]},
+          "reflection": "Jesus invites us to live one day at a time, trusting a Father who already knows what we need. Tomorrow is in His hands too. For now, it is enough to seek Him in this day.",
+          "prayer": "Heavenly Father, You know what I need before I ask. Help me to seek Your kingdom first and to leave tomorrow in Your care. Amen."
+        },
+        {
+          "passage": {"book": "1PE", "ranges": [[5, 6, 5, 7]]},
+          "reflection": "We are not asked to carry our anxieties alone. Peter's words are simple: cast them on God, because He cares for you. Let that care be the ground you stand on today.",
+          "prayer": "Lord, I give You the cares I have been holding so tightly. Thank You for caring for me. Amen."
+        },
+        {
+          "passage": {"book": "ISA", "ranges": [[41, 10, 41, 10]]},
+          "reflection": "God's answer to fear is His presence: I am with you. The promise is not that nothing hard will happen, but that you will not face it alone, and that He will hold you up.",
+          "prayer": "My God, when I am afraid, let me hear You say, 'I am with you.' Strengthen me and hold me up. Amen."
+        },
+        {
+          "passage": {"book": "JHN", "ranges": [[14, 27, 14, 27]]},
+          "reflection": "The peace Jesus gives is not the world's kind, which depends on everything going well. It is His own peace, given as a gift. Receive it again now, slowly, as you breathe.",
+          "prayer": "Lord Jesus, give me Your peace. Calm my troubled heart, and let me rest in You. Amen."
+        }
+      ]
+    },
+    {
+      "id": "hopeless",
+      "label": "Hopeless",
+      "crisisLine": true,
+      "entries": [
+        {
+          "passage": {"book": "JER", "ranges": [[29, 11, 29, 12]]},
+          "reflection": "These words were first spoken to people in exile, far from home and unsure of any future. God told them He had not forgotten them. When you cannot see a way forward, His thoughts toward you are still thoughts of peace.",
+          "prayer": "Lord, I cannot see the way ahead. Help me to trust that You have not forgotten me, and that You hear me when I call. Amen."
+        },
+        {
+          "passage": {"book": "ROM", "ranges": [[8, 35, 8, 39]]},
+          "reflection": "Paul names the hardest things he can think of and says that none of them can separate us from God's love. Whatever you are facing, it cannot reach past that love. You are still held.",
+          "prayer": "Jesus, nothing can separate me from Your love. When I feel lost, let me know that I am still Yours. Amen."
+        },
+        {
+          "passage": {"book": "ISA", "ranges": [[40, 29, 40, 31]]},
+          "reflection": "Isaiah speaks to people whose strength had run out. God's strength is given to the weary, not to those who already have plenty. Hope here is not a feeling you must produce; it is a waiting on the Lord who renews.",
+          "prayer": "Lord, I have no strength left of my own. Renew me, and lift me up when I cannot lift myself. Amen."
+        },
+        {
+          "passage": {"book": "PSA", "ranges": [[22, 1, 22, 4]]},
+          "modernReference": "Psalm 23",
+          "reflection": "The shepherd does not lead only through green pastures; he walks with his sheep through the darkest valley too. Even there, you are accompanied. Let the Good Shepherd guide your next small step.",
+          "prayer": "Good Shepherd, walk with me through this dark valley. Lead me, one step at a time, toward rest. Amen."
+        },
+        {
+          "passage": {"book": "PSA", "ranges": [[129, 1, 129, 6]]},
+          "modernReference": "Psalm 130",
+          "reflection": "The Church has prayed this psalm for centuries from the very bottom of human sorrow. It shows that we can pray from the depths, not only after we climb out. Waiting for the Lord is itself an act of hope.",
+          "prayer": "Remember, O most gracious Virgin Mary, that never was it known that anyone who fled to thy protection, implored thy help, or sought thy intercession was left unaided. Inspired by this confidence, I fly unto thee, O Virgin of virgins, my Mother. To thee do I come, before thee I stand, sinful and sorrowful. O Mother of the Word Incarnate, despise not my petitions, but in thy mercy hear and answer me. Amen."
+        }
+      ]
+    },
+    {
+      "id": "happy",
+      "label": "Happy",
+      "crisisLine": false,
+      "entries": [
+        {
+          "passage": {"book": "PHP", "ranges": [[4, 4, 4, 5]]},
+          "reflection": "Christian joy is rooted in the Lord who is near, not only in good circumstances. When joy comes, it is right to welcome it and to recognize its Giver. Let today's gladness become praise.",
+          "prayer": "Lord, thank You for the joy of this day. Let my gladness turn into praise of You. Amen."
+        },
+        {
+          "passage": {"book": "PSA", "ranges": [[117, 24, 117, 24]]},
+          "modernReference": "Psalm 118",
+          "reflection": "Every day is a gift from God's hands, and on some days His goodness is easy to see. Receive this one with gladness. Joy that is noticed and offered back to God becomes prayer.",
+          "prayer": "Lord, this is the day You have made. I rejoice and am glad in it. Amen."
+        },
+        {
+          "passage": {"book": "NEH", "ranges": [[8, 10, 8, 10]]},
+          "modernReference": "Nehemiah 8",
+          "reflection": "On a holy day, the people were told to feast and to share with those who had nothing prepared. Joy in the Lord makes us generous; it naturally overflows to others. Consider whom you might share today's gladness with.",
+          "prayer": "Lord, Your joy is my strength. Make my happiness generous, so that others may share in it. Amen."
+        },
+        {
+          "passage": {"book": "LUK", "ranges": [[1, 46, 1, 50]]},
+          "reflection": "Mary's joy pours out as praise, and it looks beyond herself to God's mercy from generation to generation. Our happiest moments can lead us, like her, to magnify the Lord.",
+          "prayer": "With Mary, I magnify You, Lord, and rejoice in God my Savior. Thank You for the great things You have done for me. Amen."
+        },
+        {
+          "passage": {"book": "JHN", "ranges": [[15, 9, 15, 11]]},
+          "reflection": "Jesus wants His own joy to be in us, and our joy to be complete. That joy grows as we remain in His love. Let today's happiness draw you closer to Him.",
+          "prayer": "Lord Jesus, let me remain in Your love, so that Your joy may be in me and my joy may be full. Amen."
+        }
+      ]
+    },
+    {
+      "id": "grateful",
+      "label": "Grateful",
+      "crisisLine": false,
+      "entries": [
+        {
+          "passage": {"book": "PSA", "ranges": [[102, 1, 102, 5]]},
+          "modernReference": "Psalm 103",
+          "reflection": "The psalmist reminds his own soul not to forget God's benefits. Gratitude is partly an act of remembering. Take a moment to recall, one by one, the good things God has done for you.",
+          "prayer": "Bless the Lord, O my soul. Thank You, Lord, for forgiving me, healing me, and crowning me with mercy. Amen."
+        },
+        {
+          "passage": {"book": "1TH", "ranges": [[5, 16, 5, 18]]},
+          "reflection": "Paul links joy, prayer, and thanksgiving together. Giving thanks in all things does not mean pretending everything is good; it means finding God present in each one.",
+          "prayer": "Lord, teach me to give thanks in all things, and to see Your hand in every part of my day. Amen."
+        },
+        {
+          "passage": {"book": "COL", "ranges": [[3, 15, 3, 17]]},
+          "reflection": "Here gratitude shapes a whole life: words, songs, and actions done in the name of the Lord Jesus. Let your thankfulness become something you do today, not only something you feel.",
+          "prayer": "Lord Jesus, let whatever I do today, in word or deed, be done in Your name, giving thanks to the Father through You. Amen."
+        },
+        {
+          "passage": {"book": "LUK", "ranges": [[17, 15, 17, 19]]},
+          "reflection": "Ten were healed, but one came back to give thanks. His gratitude brought him face to face with Jesus. Returning thanks draws us closer to the One who blesses us.",
+          "prayer": "Lord, like the one who returned, I come back to thank You for all You have done for me. Amen."
+        },
+        {
+          "passage": {"book": "PSA", "ranges": [[135, 1, 135, 3]]},
+          "modernReference": "Psalm 136",
+          "reflection": "This psalm repeats one refrain again and again: His mercy endures forever. Gratitude grows when we notice how faithful God has been, not once, but through every season.",
+          "prayer": "I give You thanks, Lord, for You are good, and Your mercy endures forever. Amen."
+        }
+      ]
+    }
+  ]
+}
