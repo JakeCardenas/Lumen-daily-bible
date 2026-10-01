@@ -5,8 +5,8 @@ from lumen_data.citations import parse
 from lumen_data.versification import (DouayPassage, MissingOverride, TvtmsMap, VersificationError, Versifier,
                                       format_passage, psalm_hebrew_to_douay)
 
-NAMES = {"ISA": "Isaias", "PSA": "Psalms", "EST": "Esther", "SIR": "Ecclesiasticus", "MAT": "Matthew"}
-CHAPTERS = {"ISA": 66, "PSA": 150, "EST": 16, "SIR": 51, "MAT": 28}
+NAMES = {"ISA": "Isaias", "PSA": "Psalms", "EST": "Esther", "SIR": "Ecclesiasticus", "MAT": "Matthew", "MRK": "Mark"}
+CHAPTERS = {"ISA": 66, "PSA": 150, "EST": 16, "SIR": 51, "MAT": 28, "MRK": 16}
 LENGTHS = {"ISA": {9: 21, 63: 19, 64: 12}, "PSA": {22: 6, 114: 9, 115: 10, 146: 11, 147: 9},
            "EST": {13: 18, 14: 19}, "MAT": {5: 48}}
 DOUAY = DouayIndex({"books": [
@@ -32,6 +32,8 @@ TVTMS = HEADER + "".join([
     *[row("Latin", f"Isa.64:{v + 1}", f"64:{v}", f"64:{v + 1}", f"64:{v}") for v in range(1, 12)],
     row("Eng-KJV+Hebrew", "Psa.147:12", "147:12", "147:12", "147:1"),
     row("Greek+Latin", "Psa.147:1", "147:12", "147:1", "147:1"),
+    row("Latin", "Mrk.8:39", "", "8:39", "9:1"),
+    *[row("Latin", f"Mrk.9:{v - 1}", "", f"9:{v - 1}", f"9:{v}") for v in range(2, 11)],
 ]) + "#DataEnd(Expanded)\n"
 
 
@@ -79,6 +81,13 @@ class VersificationTest(unittest.TestCase):
         self.assertEqual(passage.ranges, ((5, 1, 5, 12),))
         self.assertFalse(passage.differs)
         self.assertTrue(passage.partial)
+
+    def test_new_testament_follows_tvtms_where_the_vulgate_differs(self):
+        versifier = Versifier(DOUAY, TvtmsMap.parse(TVTMS), TvtmsMap.parse(TVTMS, "Greek"))
+        [citation] = parse("Mark 9:2-10")
+        passage = versifier.convert(citation)
+        self.assertEqual(passage.ranges, ((9, 1, 9, 9),))
+        self.assertTrue(passage.differs)
 
     def test_esther_additions(self):
         self.assertEqual(self.convert("Esther C:12, 14-16, 23-25").ranges, ((14, 1, 14, 1), (14, 3, 14, 5), (14, 12, 14, 14)))

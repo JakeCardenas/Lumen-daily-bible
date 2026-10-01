@@ -1,7 +1,8 @@
 """Maps lectionary citations (modern numbering) to Douay-Rheims (Vulgate) numbering.
 
-Hebrew-numbered books use STEPBible's TVTMS data (Tyndale House, CC BY 4.0). Daniel and the
-New Testament share the Vulgate's numbering. Books the US Lectionary numbers from the Greek
+Hebrew-numbered books use STEPBible's TVTMS data (Tyndale House, CC BY 4.0); the New Testament
+uses TVTMS's Greek-to-Latin rows where the Vulgate splits verses differently; Daniel shares the
+Vulgate's numbering. Books the US Lectionary numbers from the Greek
 (Tobit, Judith, Wisdom, Sirach, Baruch, 1-2 Maccabees) need a reviewed entry in
 tool/data/dc_overrides.json, because no single numbering scheme matches them.
 """
@@ -151,7 +152,9 @@ class Versifier:
         if not point.chapter.isdigit():
             ref = self._esther_addition(book, point)
         elif book.tradition == "latin":
-            ref = (int(point.chapter), point.verse)
+            # The New Testament follows the Greek, which the Vulgate splits differently in a few places (Mark 9, Acts 14...).
+            refs = self.greek.latin_for(book.tvtms, int(point.chapter), point.verse) if self.greek and book.testament == "new" else None
+            ref = _pick(refs or [(int(point.chapter), point.verse)], point.part, first)
         else:
             refs = self.hebrew.latin_for(book.tvtms, int(point.chapter), point.verse)
             if not refs:

@@ -65,6 +65,12 @@ class CitationTest(unittest.TestCase):
         self.assertEqual(c.book, "REV")
         self.assertEqual(spans(c), [("11", 19, "a", "11", 19, "a"), ("12", 1, "", "12", 6, "a"), ("12", 10, "ab", "12", 10, "ab")])
 
+    def test_single_chapter_books_cite_verses_without_a_chapter(self):
+        self.assertEqual(spans(parse("Jude 17, 20b-25")[0]), [("1", 17, "", "1", 17, ""), ("1", 20, "b", "1", 25, "")])
+        self.assertEqual(spans(parse("Philemon 7-20")[0]), [("1", 7, "", "1", 20, "")])
+        self.assertEqual(spans(parse("3 John 5-8")[0]), [("1", 5, "", "1", 8, "")])
+        self.assertEqual(spans(parse("Obadiah 1:15")[0]), [("1", 15, "", "1", 15, "")])
+
     def test_typo_seen_in_source_data(self):
         self.assertEqual(parse("Hewbrews 2:14-18")[0].book, "HEB")
 

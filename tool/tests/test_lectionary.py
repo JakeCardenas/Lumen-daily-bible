@@ -114,6 +114,18 @@ class LectionaryTest(unittest.TestCase):
         self.assertEqual(sunday[3]["label"], "Alleluia")
         self.assertEqual(validate(result.calendar, douay()), [])
 
+    def test_open_data_citations_that_do_not_convert_are_harvested_instead(self):
+        lect = lectionary()
+        lect["feriale_per_annum_II"]["OrdWeekday26Monday"] = {**WEEKDAY, "first_reading": "Galatians 17:20b-25"}
+        index = douay()
+        fill = {"sets": {"OrdWeekday26Saturday/II": {"readings": WEEKDAY}},
+                "memorials": {"StThereseChildJesus": {"use": "weekday"}}}
+        result = CalendarBuilder(events(), lect, fill, Versifier(index, TvtmsMap({})), index).build(
+            date(2026, 9, 28), date(2026, 10, 4))
+        need = result.needs["OrdWeekday26Monday/II"]
+        self.assertEqual(need["kind"], "set")
+        self.assertIn("Galatians 17:20", need["reason"])
+
     def test_validate_reports_missing_gospel(self):
         calendar = {"start": "2026-10-04", "end": "2026-10-04",
                     "sets": {"X/": [{"kind": "first_reading", "passages": [{"book": "GAL", "ranges": [[1, 1, 1, 2]]}]}]},

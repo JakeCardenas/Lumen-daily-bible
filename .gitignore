@@ -50,3 +50,6 @@ app.*.map.json
 # Data build downloads (TVTMS must not be redistributed)
 tool/cache/
 __pycache__/
+tool/data/harvest_needed.json
+tool/data/dc_overrides_todo.json
+tool/data/harvest_unresolved.json

@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from .bible import DouayIndex
 from .citations import CitationError, parse, split_alternatives
-from .versification import MissingOverride, Versifier, format_passage
+from .versification import MissingOverride, VersificationError, Versifier, format_passage
 
 SUNDAY_FILES = {c: f"dominicale_et_festivum_{c}" for c in "ABC"}
 WEEKDAY_FILES = {"I": "feriale_per_annum_I", "II": "feriale_per_annum_II"}
@@ -274,6 +274,13 @@ class CalendarBuilder:
                 self.sets[set_id] = convert_readings(source, event, self.versifier, self.douay)
             except MissingOverride as missing:
                 self.missing[missing.key] = missing.proposal
+                return None
+            except VersificationError as error:
+                if source is not readings:
+                    raise   # harvested data must convert; fix it by hand
+                # A bad citation in the open data (e.g. "Jude 17:20b-25"): take this set from USCCB instead.
+                self.needs.setdefault(set_id, {"kind": "set", "set": set_id, "first_date": day.isoformat(),
+                                               "reason": str(error)})
                 return None
         return {"title": title, "set": set_id}
 

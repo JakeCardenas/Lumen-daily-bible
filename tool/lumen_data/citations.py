@@ -33,6 +33,7 @@ class Citation:
         return not self.spans
 
 
+SINGLE_CHAPTER_BOOKS = frozenset({"OBA", "PHM", "2JN", "3JN", "JUD"})
 _DASHES = str.maketrans({"‐": "-", "‑": "-", "‒": "-", "–": "-", "—": "-", "−": "-"})
 _PREFIX = re.compile(r"^(?:cf|see|or)\b\.?\s*", re.IGNORECASE)
 _NAME = re.compile(r"^(?P<name>(?:[1-4]\s*)?[A-Za-z][A-Za-z.' ]*?)\s*(?P<rest>(?:\d|[A-F]\s*:).*)$")
@@ -94,6 +95,8 @@ def _match_book(token: str, original: str) -> tuple[Book, str] | None:
 
 
 def _parse_rest(book: Book, rest: str, original: str) -> Citation:
+    if book.id in SINGLE_CHAPTER_BOOKS and ":" not in rest:
+        return Citation(book.id, _parse_items("1", rest, original))   # "Jude 17, 20b-25"
     dual = re.fullmatch(r"(?P<a>\d+)\s*\((?P<b>\d+)\)\s*(?::\s*(?P<v>.+))?", rest)
     if dual:
         a, b = int(dual.group("a")), int(dual.group("b"))
