@@ -1,7 +1,7 @@
 # Lumen — Design Spec
 
 Date: 2026-10-01
-Status: Approved design, pending spec review
+Status: Approved design (revision 2: data sources and conversion details settled during research)
 
 ## 1. Purpose
 
@@ -9,234 +9,292 @@ Lumen is a calm, simple Roman Catholic Scripture app for iOS and Android, built 
 
 ### Success criteria
 
-- Every calendar date from 2026-01-01 through 2035-12-31 shows that day's celebration and complete Mass readings with verse text, fully offline.
-- The Bible is browsable and searchable offline (by words and by reference).
+- Every date from 2026-01-01 through 2035-12-31 shows that day's celebration and complete Mass readings with verse text, fully offline.
+- The Bible is browsable and searchable offline, by words and by reference.
 - Bookmarks persist across launches.
-- The daily reminder works offline, fires at the user's chosen local time, and opens that day's readings when tapped.
+- The daily reminder works offline, fires at the user's chosen local time, and opens the right day's readings when tapped.
 - The app is fully usable with notifications disabled or denied.
 
 ### Non-goals (v1)
 
 - Accounts, sync, analytics, remote push notifications.
-- Dark mode, adjustable in-app font size (system text scaling is respected), audio.
+- Dark mode, an in-app font-size setting (system text scaling is respected), audio.
 - Calendars other than the United States national calendar.
-- Responsorial refrains and other copyrighted Lectionary/ICEL text.
-- Licensed translations (NABRE, RSV-2CE). The code keeps a seam for one later.
+- Responsorial refrains and other copyrighted Lectionary or ICEL text.
+- Licensed translations such as NABRE or RSV-2CE. Reading text comes only from the bundled Bible, so a licensed translation can be added later.
 
 ## 2. Key decisions
 
 | Decision | Choice | Why |
 |---|---|---|
-| Translation | Douay-Rheims, Challoner revision | Public domain, Church-approved, all 73 books. No license needed. |
-| Calendar | US national calendar (Ascension and Epiphany on Sunday, US proper saints) | Primary audience. |
-| Calendar strategy | Pre-built per-date table for 2026–2035, bundled | Accurate (generated from a maintained open engine), trivially simple at runtime, fully offline. Avoids re-implementing hundreds of precedence and transfer rules. |
-| Lectionary citations | Liturgical Calendar API data (Apache-2.0) plus a verified fill for missing days from USCCB's published daily citations (citations and lectionary numbers only, never text) | The open dataset lacks most Ordinary Time weekdays. Citations are factual references. The user approved a one-time harvest for verification. |
-| Bible storage and search | Bundled JSON, loaded into memory, searched on a background isolate | About 35k verses; linear search is fast; no native database dependency. |
-| Local storage | `shared_preferences` (bookmarks as JSON, reminder settings) | Small data, no network, no account. |
+| Translation | Douay-Rheims, 1899 American edition (Challoner revision), from eBible.org | Public domain and Church-approved, with all 73 books. The first candidate file (a TSV on GitHub) was missing Psalm 9:22–39, had a shifted Exodus 6, blank verses, and a merged Job 25, so it was rejected. |
+| Calendar | US national calendar: Ascension and Epiphany on Sunday, US proper saints | Primary audience. |
+| Calendar strategy | Pre-built per-date table for 2026–2035, bundled | Accurate, because it is generated from a maintained open engine. Simple and fully offline at runtime. |
+| Calendar events | Liturgical Calendar API (Apache-2.0): event keys, names, ranks, colors, seasons, cycles | Its embedded readings have gaps and errors, so they are not used. |
+| Reading citations | The API project's lectionary source files (Apache-2.0), accepted only when complete. Otherwise the citations come from USCCB daily pages (citations and lectionary numbers only, never text). | The open files lack most Ordinary Time weekdays and some feasts. Citations are factual references. The user approved a one-time harvest of roughly 400 pages. |
+| Verse numbering | All conversion happens in the build (Python). The app receives ready-made Douay-Rheims verse ranges. | Keeps the error-prone logic in one place, where every reading is checked before shipping. |
+| Numbering data | STEPBible TVTMS (Tyndale House, CC BY 4.0) for Hebrew-numbered books. Daniel and the New Testament keep the same numbers. Esther's lettered additions use fixed rules. Books the Lectionary numbers from the Greek (Tobit, Judith, Wisdom, Sirach, Baruch, 1–2 Maccabees) need a reviewed per-citation entry. | No single scheme matches the US Lectionary's numbering for the Greek-numbered books. |
+| Bible storage and search | Bundled JSON, loaded off the main thread, searched in memory | About 35,800 verses, so simple word-prefix matching is fast enough with no database. |
+| Local storage | `shared_preferences` | Small data, no network, no account. |
 | State management | `provider` with `ChangeNotifier`s and constructor-injected services | Simple and testable. |
-| Navigation | Root shell with three tabs (Today, Bible, Saved), each tab its own `Navigator` | No routing package needed. A notification tap switches to Today and sets the date. |
-| Notifications | `flutter_local_notifications` 22.x, `timezone`, `flutter_timezone`, `app_settings` | Well maintained, local only, works offline. |
+| Navigation | Root shell with three tabs (Today, Bible, Saved), each with its own `Navigator` | No routing package needed. A notification tap switches to Today and sets the date. |
+| Notifications | `flutter_local_notifications` 22.x, `timezone`, `flutter_timezone` | Well maintained and local-only. The plugin's `openAppNotificationSettings()` replaces a separate settings package. |
 
 ## 3. Architecture
 
 ```
 lib/
-  main.dart                       bootstrap: load assets, init services, run app
-  app.dart                        MaterialApp, theme, root shell (3 tabs)
-  theme/                          colors, typography (Literata for Scripture)
-  bible/
-    bible_models.dart             Book, Verse, VerseRef, Passage
-    bible_repository.dart         load asset, chapters, verse ranges
-    bible_search.dart             text search (isolate) and reference parsing
-    book_names.dart               Douay names, modern names, aliases
-  liturgy/
-    liturgical_day.dart           LiturgicalDay, Mass, ReadingCitation models
-    liturgical_calendar.dart      date to LiturgicalDay (from bundled table)
-    citation_parser.dart          lectionary citation string to ranges
-    versification.dart            modern/Hebrew to Douay (books, psalms, special cases)
-    reading_resolver.dart         citation to Passage text from BibleRepository
-  bookmarks/
-    bookmark.dart, bookmark_store.dart
-  moods/
-    mood_models.dart, mood_repository.dart
-  reminders/
-    reminder_settings.dart        enabled, time, showDetails (persisted)
-    reminder_planner.dart         pure Dart: what to schedule (testable)
-    reminder_service.dart         wraps flutter_local_notifications
-    notification_gateway.dart     interface, so tests can use a fake
-  features/
-    today/ bible/ saved/ mood/ settings/   screens and widgets
+  main.dart                        bootstrap; startup error screen
+  theme.dart                       colors, typography (Literata for Scripture)
+  version.dart                     app version shown in About
+  app/                             LumenApp, HomeShell (tabs), ShellController, AppScope (providers), licenses
+  bible/                           Bible model and loading, ScriptureRef, labels, psalm numbering, reference parser, search
+  liturgy/                         LiturgicalCalendar (bundled table), LiturgicalDay, Mass, Reading
+  today/                           TodayController (selected date and Mass)
+  bookmarks/                       Bookmark, BookmarkStore
+  moods/                           MoodLibrary
+  reminders/                       settings, planner (pure Dart), gateway interface, controller, plugin gateway
+  features/                        today/ bible/ saved/ mood/ settings/ screens
+  widgets/                         PassageText
 assets/
-  bible/douay_rheims.json
-  liturgy/calendar_us.json
-  moods/moods.json
-  fonts/Literata-*.ttf (+ OFL.txt)
-tool/
-  build_bible.py                  drb.tsv to assets/bible/douay_rheims.json
-  fetch_litcal.py                 US calendar 2026–2035 and lectionary JSON (cached in tool/cache/)
-  harvest_usccb.py                citations for gap days (cached, rate-limited)
-  build_calendar.py               merge into assets/liturgy/calendar_us.json
-  data/lectionary_fill.json       harvested and reconciled citations, with source dates
+  bible/douay_rheims.json          generated
+  liturgy/calendar_us.json         generated
+  moods/moods.json                 authored
+  fonts/                           Literata (OFL)
+  licenses/                        Apache-2.0 (calendar data), OFL, TVTMS notice
+tool/                              Python 3 data build (standard library only)
+  lumen_data/                      books, bible, citations, versification, litcal, lectionary, usccb, harvest
+  build_bible.py  build_calendar.py  harvest_usccb.py  show_verses.py  check_moods.py
+  data/                            lectionary_fill.json, dc_overrides.json, fill_report.md (committed)
+  cache/                           downloads (git-ignored; TVTMS is not redistributed)
+  tests/                           unittest suites
 ```
 
-Each unit has one job. Screens depend on repositories and services through interfaces, so widget tests can inject fakes.
+Screens depend on repositories and controllers through `provider`, and the notification plugin sits behind a `NotificationGateway` interface, so widget tests use fakes.
 
 ## 4. Data pipeline
 
 ### 4.1 Bible
 
-- Source: Douay-Rheims TSV (public domain). Columns: book name, abbreviation, book number, chapter, verse, text.
-- Keep only the 73 biblical books. Drop the Catechism, both canon law codes and the GIRM, which the source file also contains and which are not public domain.
-- Output: `{books: [{id, name, modernName, testament, chapters: [[verse text, ...], ...]}]}`. Verse numbering follows the source.
+- Source: eBible.org `engDRA_vpl.zip` (Douay-Rheims 1899, public domain). Each line reads `BOOKCODE chapter:verse text`.
+- The 73 books are kept in Douay order. Each book records its Douay name, its modern name, its testament, and every search alias (aliases are generated from one Python table so the app and build agree).
+- Output: `{translation, source, books: [{id, name, modern, testament, aliases, chapters: [[verse, ...]]}]}`. Any missing verse becomes `null` and is reported.
 
 ### 4.2 Calendar and readings
 
-1. `fetch_litcal.py` downloads `calendar/nation/US/{year}?year_type=CIVIL` for 2025–2035 (2025 is used only for reconciliation), plus the open lectionary JSON files. Raw responses are cached under `tool/cache/`.
-2. For every date, pick the celebration in effect: the highest-ranked event, excluding Saturday vigil Masses of Sunday. Record optional memorials as alternatives.
-3. Resolve readings by event key and cycle: the Sunday cycle (A/B/C) for Sundays and feasts, and the weekday cycle (I/II) for Ordinary Time weekdays. Use the citations embedded in the API response when present, otherwise the lectionary files.
-4. For keys still missing (mostly Ordinary Time weekdays, plus a few feasts and solemnities), use `tool/data/lectionary_fill.json`. `harvest_usccb.py` builds it:
-   - Fetch USCCB daily pages for past dates whose celebration maps to a missing key: Year I from 2019, 2021, 2023 and 2025; Year II from 2020, 2022, 2024 and 2026, up to today. Throttle to about 1 request per second and cache each response.
-   - Extract only the reading headings, citations and lectionary number.
-   - Accept a date for a weekday key only if its lectionary number equals the expected Ordinary Time weekday number, `305 + (week − 1) × 6 + dayIndex` (Monday = 0 … Saturday = 5; for example week 27 Monday = 461). This rules out proper memorial readings.
-   - When several years agree, keep the citation. When they disagree, list the conflict in `tool/data/fill_report.md` and stop the build until it is resolved.
-5. Days with several Masses (Christmas: Vigil, Night, Dawn, Day; Easter Vigil; Palm Sunday) keep each Mass as a separate entry.
-6. Output `calendar_us.json`, keyed by ISO date: `{name, season, color, rank, cycle, masses: [{title, readings: [{kind, citation, shortCitation?}]}], optionalMemorials: [names]}`.
+1. Fetch the US calendar for 2026–2035 (civil years) from the API and cache it. Fetch the lectionary source files.
+2. For each date, the primary celebration is the highest-ranked event that is not a vigil Mass. Optional memorials, including the Saturday memorial of Mary, are never primary and are listed separately.
+3. Resolve readings by event key and cycle:
+   - Sunday cycle A/B/C for Sundays and feasts. Transfiguration is keyed by the date's Sunday cycle.
+   - Weekday cycle I/II for Ordinary Time weekdays.
+   - Seasonal weekday files and the saints' file otherwise.
+   - A set is complete only if it has a first reading, a Gospel, and a responsorial psalm with verse numbers, and every citation parses. "Psalm 71" alone counts as incomplete.
+4. Obligatory memorials take whatever USCCB shows for them, recorded once per memorial:
+   - Weekday readings, when the page's lectionary number falls in the weekday range 175–508. The weekday the memorial replaces is found from the other days of the same week.
+   - Proper readings, recorded as their own set, when the number falls outside that range.
+5. Masses:
+   - Christmas Day lists Night, Dawn, and Day.
+   - Christmas, Pentecost, the Assumption, the Nativity of John the Baptist, and Sts. Peter and Paul add a "Vigil Mass (evening)" to the day before.
+   - The Easter Vigil is Holy Saturday's Mass.
+   - Saturday-evening Sunday vigils are not listed.
+6. Gaps become harvest needs. `harvest_usccb.py` handles them as follows:
+   - It picks past dates (2019 to today) where that key was the primary celebration, using cached API calendars for those years.
+   - It fetches the USCCB page for each date, at least 1.5 s apart, cached, with a hard cap (default 600 network requests).
+   - It parses headings, citations, and the lectionary number only.
+   - Ordinary Time weekday pages are accepted only if the lectionary number equals `305 + (week − 1) × 6 + dayIndex` (Monday = 0). For example, week 27 Monday = 461.
+   - Results go to `tool/data/lectionary_fill.json`, plus a human-readable `fill_report.md`.
+7. Output `calendar_us.json`:
 
-The build fails if any date from 2026 to 2035 lacks a first reading, psalm or Gospel, or if any citation does not resolve to Douay-Rheims text (§4.3).
+```json
+{"version": 1, "calendar": "United States", "start": "2026-01-01", "end": "2035-12-31",
+ "sets": {"OrdSunday27/A": [{"kind": "first_reading", "label": "First Reading", "citation": "Isaiah 5:1-7",
+   "alternatives": [], "passages": [{"book": "ISA", "ranges": [[5, 1, 5, 7]]}],
+   "douay": "Isaias 5:1-7", "differs": false, "partial": false}]},
+ "days": {"2026-10-04": {"name": "27th Sunday of Ordinary Time", "season": "Ordinary Time", "colors": ["green"],
+   "rank": null, "optional": [], "masses": [{"title": null, "set": "OrdSunday27/A"}]}}}
+```
 
-### 4.3 Citation conversion (`citation_parser.dart`, `versification.dart`)
+The build fails, and nothing is written, if any of these is true:
+- A date has no Mass.
+- A Mass has no Gospel, or has no reading other than the Gospel.
+- Any range points outside the Douay-Rheims text.
+- Any spot check fails (§8).
 
-- Grammar covers:
-  - `Book C:V-V, V, V-V`, with verse letters (`5-6ab`).
-  - `and` as a separator.
-  - Chapter-crossing ranges (`5:20-6:2`, `52:13—53:12`).
-  - Alternatives (`A|B`): longer and shorter forms.
-  - Prefixes such as `Cf.` and `See`.
-  - Psalm dual numbering such as `Psalm 103 (102): ...`.
-  - Whole-psalm citations (`Psalm 24`).
-- Verse letters are rounded to whole verses, and the screen notes this.
-- Book mapping from modern to Douay:
-  - The historical books: 1 Samuel→1 Kings, 2 Samuel→2 Kings, 1 Kings→3 Kings, 2 Kings→4 Kings, 1–2 Chronicles→1–2 Paralipomenon, Ezra→1 Esdras, Nehemiah→2 Esdras.
-  - The prophets: Isaiah→Isaias, Jeremiah→Jeremias, Hosea→Osee, Obadiah→Abdias, Jonah→Jonas, Micah→Micheas, Zephaniah→Sophonias, Haggai→Aggeus, Zechariah→Zacharias, Malachi→Malachias.
-  - The other books: Joshua→Josue, Tobit→Tobias, Sirach→Ecclesiasticus, Song of Songs→Canticle of Canticles, 1–2 Maccabees→1–2 Machabees, Revelation→Apocalypse.
-  - Common abbreviations are also accepted.
-- Psalm numbering converts Hebrew to Vulgate, including the joins and splits:
-  - Hebrew 9 and 10 join as Vulgate 9 (Hebrew 10:1 = 9:22).
-  - Hebrew 114 and 115 join as Vulgate 113 (Hebrew 115:1 = 113:9).
-  - Hebrew 116 splits into Vulgate 114 (verses 1–9) and 115 (verse 10 onward = 115:1).
-  - Hebrew 147 splits into Vulgate 146 (verses 1–11) and 147 (verse 12 onward = 147:1).
-  - Hebrew 11–113 and 117–146 are one lower in the Vulgate.
-- Other numbering differences: Malachi 3:19–24 → Malachias 4:1–6; Joel 3 → Joel 2:28–32 and Joel 4 → Joel 3; Esther's lettered additions (A–F) → Douay Esther 10:4–16:24; Sirach where the Douay versification differs. Each case gets a unit test.
-- A citation that cannot be mapped fails the data build rather than showing wrong text.
+### 4.3 Citation conversion (build-time)
+
+- **Parser:**
+  - Accepts `Book C:V-V, V`, verse letters (`5-6ab`), `and`, and chapter-crossing ranges with any dash (`52:13—53:12`).
+  - A `;` starts a new chapter, or a new book when a name follows (`John 1:7; Luke 1:17`).
+  - Accepts `A|B` alternatives, `Cf.`/`See` prefixes, dual psalm numbers `103 (102)` (the larger is the Hebrew number), whole chapters, the European `84,5`, Esther's lettered chapters (`C:12`), and lectionary and USCCB abbreviations.
+  - A typo seen in the source data ("Hewbrews") is accepted.
+- **Hebrew-numbered books** are converted with TVTMS rows that describe Latin Bibles. Rows specific to Douay-Rheims win. Where TVTMS lists no change, the verse keeps its number, except that Psalms fall back to the standard Hebrew→Vulgate psalm rule. When one Hebrew verse becomes two Latin verses, verse parts pick the half (`63:19b` → `64:1`).
+- **Esther's additions** use fixed rules: A:1–11 → 11:2–12, A:12–17 → 12:1–6, B → 13:1–7, C:1–11 → 13:8–18, C:12–30 → 14:1–19, E → 16:1–24, F:1–10 → 10:4–13.
+- **Greek-numbered books** must have an entry in `tool/data/dc_overrides.json`. Each entry is reviewed against the Douay text at both ends. Missing ones are written to `dc_overrides_todo.json` with a proposal and the build stops.
+- **Output:**
+  - Overlapping and adjacent ranges are merged in citation order.
+  - Each reading carries the Lectionary citation as written and a formatted Douay reference.
+  - `differs` is set when the numbers differ, which shows "Douay-Rheims: …" in the app.
+  - `partial` is set when verse letters were rounded to whole verses.
+- A reading may span books (an acclamation such as `John 1:7; Luke 1:17`), so it holds a list of passages.
 
 ## 5. Screens and UX
 
-The tone is calm. Warm light colors: ivory background (about `#FBF7F0`), warm white surfaces, deep brown-gray text (about `#2B2620`), one muted accent (about `#8A5A2B`). Scripture is set in Literata (OFL, bundled); the UI uses the system font. System text scaling is respected. There are no dialogs or pop-ups (the system permission prompt is the only one, and the user triggers it), no streaks or badges, no decorative imagery or ornamental icons. The bottom navigation uses text labels with simple outline icons. Every interactive element has a clear text label and is announced correctly by screen readers.
+The tone is calm. Warm light colors: ivory background `#FBF7F0`, warm white surfaces `#FFFDF8`, deep brown-gray text `#2B2620`, and one muted accent `#8A5A2B`.
+- Scripture is set in Literata (OFL, bundled), and the UI uses the system font.
+- System text scaling is respected, and layouts must not overflow at 200%.
+- There are no dialogs or pop-ups. The only exceptions are the system permission prompt and the system time picker, both opened by the user.
+- There are no streaks or badges, and no decorative imagery or ornamental icons.
+- The bottom navigation uses text labels with simple outline icons.
+- Repeated buttons carry specific screen-reader labels (for example "Save Gospel").
 
 ### Today
 
-- Header: date, celebration name, season, and liturgical color as text ("Green · Ordinary Time"). If any optional memorials fall that day, a note reads "Optional memorial: Saint …".
-- A Mass selector (text segmented buttons) appears only on days with several Masses.
-- Reading sections: First Reading, Responsorial Psalm, Second Reading (when present), Alleluia Verse, Gospel. Each shows:
-  - a label and the lectionary citation,
-  - "Douay-Rheims: …" when the Douay reference differs,
-  - the verse text with small verse numbers,
-  - a "Save" text button.
-- Date controls: "Previous day", "Today", "Next day", limited to the bundled range. Outside the range a plain message says readings are not available for that date.
-- Optional section: "How are you feeling?", with buttons for Sad, Anxious, Hopeless, Happy and Grateful, which open the Mood page.
+- Header: the date, the celebration name, and the liturgical color and season as text ("Green · Ordinary Time · Memorial"). When optional memorials fall that day, a line reads "Optional memorial: …".
+- Date controls: "Previous day", "Back to today", and "Next day", limited to the bundled range. Outside the range a plain message says readings are not included for that date.
+- When there are several Masses, a row of choice chips appears ("Mass of the day", "Vigil Mass (evening)", "Mass during the Night", …).
+- Reading sections, in Lectionary order: label, citation, "Douay-Rheims: …" when the numbering differs, "Or: …" alternatives, the verse text, a note when verses were cited in part, and "Save".
+- Optional section: "How are you feeling?", with buttons for Sad, Anxious, Hopeless, Happy, and Grateful.
 - A "Settings" text button in the app bar.
 
 ### Mood page
 
-- One passage (citation and Douay-Rheims text), a short reflection of 2–4 sentences, and a "Show a prayer" button that expands the prayer.
-- "Another passage" cycles through 4–6 entries per mood. The starting entry varies by date.
-- "Save" bookmarks the passage.
+- Title: "Feeling sad", "Feeling grateful", and so on.
+- Content: the passage reference (Douay naming, plus "Psalm 34 in most modern Bibles" where useful), the verse text, a reflection of 2–4 sentences, and a "Show a prayer" button that expands the prayer.
+- Buttons: "Another passage" and "Save passage". Each mood has five entries, and the first one shown changes with the date.
 - Footer on every mood: "These readings offer spiritual encouragement. They are not a substitute for care from a doctor or counselor."
-- Sad and Hopeless also show an inline line: "If you are in danger or thinking about ending your life, call or text 988 (US) or your local emergency number."
-- Content lives in `assets/moods/moods.json`. Reflections and prayers are original writing, plus traditional public-domain prayers where they fit (for example the Memorare). Theology stays orthodox and gentle and makes no clinical claims.
+- Sad and Hopeless also show: "If you are in danger or thinking about ending your life, call or text 988 (US) or your local emergency number."
+- Content lives in `assets/moods/moods.json`. Reflections and prayers are original writing, except the traditional Memorare. They make no clinical claims.
 
 ### Bible
 
-- A search field sits at the top. Input that looks like a reference ("John 3:16", "Isaiah 9", "Ps 23", modern or Douay names) shows a "Go to …" result first, and Psalms are converted to the Douay numbering. Other input runs a case- and diacritic-insensitive word search, with results showing the reference and a highlighted snippet (first 200, with a "Show more" button).
-- Book list grouped as Old Testament and New Testament, showing the Douay name and the modern name when they differ ("Isaias (Isaiah)").
-- Chapter grid, then the chapter reader. "Previous chapter" and "Next chapter" sit at the bottom.
-- Tapping verses toggles a selection. A bottom bar then shows "Save" and "Clear".
+- Search field: "Search the Bible", with the hint "Words or a reference, such as John 3:16".
+  - Results appear after 250 ms.
+  - References come first ("Go to John 3:16").
+  - Psalms convert from modern numbering and offer both readings: "Go to Psalm 22" (Psalm 23 in most modern Bibles) and "Go to Psalm 23" (Douay-Rheims numbering).
+  - Word search is case- and accent-insensitive, and every word must match the start of a word. It shows the first 200 matches with highlighted terms.
+- Book list: Old and New Testament sections, showing the Douay name and the modern name when they differ.
+- Chapter grid, then the chapter reader.
+  - Tapping verses selects them, and a bottom bar shows "N verses selected", "Clear", and "Save".
+  - "Previous chapter" and "Next chapter" buttons.
+  - Search results open with the verse scrolled into view.
 
 ### Saved
 
-- Newest first: reference, a two-line snippet, and the date saved.
-- Tap to open the passage in the reader. A "Remove" text button on each row.
-- Empty state: one plain sentence explaining how to save.
+- Newest first: reference, snippet, and "Saved Oct 1, 2026". Tap to open the passage, which has an "Open chapter" button. Each row has a "Remove" button.
+- Empty state: "Passages you save will appear here. Choose Save under a reading, or select verses in the Bible."
 
 ### Settings
 
-- Daily reminder: an on/off switch, a time ("8:00 AM", changed with the system time picker), and a "Show Scripture in notification preview" switch with a one-line explanation.
-- About: the translation (Douay-Rheims, Challoner revision, public domain), data sources and licenses (Liturgical Calendar API, Apache-2.0, credited; citations cross-checked against USCCB daily readings), Literata OFL, the support disclaimer, and the app version.
+- Daily reminder section:
+  - Switch: "Daily reminder".
+  - "Time", with "Change" opening the system time picker. The default is 8:00 AM.
+  - Switch: "Show Scripture in notification preview", with an explanation.
+  - The permission help card, when needed.
+  - A note that reminders are local, work offline, and may be delayed a few minutes by battery-saving settings.
+- About section: Scripture source, daily-readings sources and licenses, verse-numbering data, the spiritual-support disclaimer, typeface, a "View licenses" button (Flutter's license page, with the Apache-2.0, OFL, and TVTMS notices registered), and the version.
 
 ## 6. Daily reminder
 
 ### Permission flow
 
-1. The plugin is initialized with all `request*Permission` flags false, so nothing prompts at launch.
-2. When the user turns the switch on, request permission (Android 13+ `POST_NOTIFICATIONS`; iOS alert and sound, no badge).
+1. The plugin is initialized with every `request*Permission` flag false, so nothing prompts at launch.
+2. When the user turns the switch on, request permission: `POST_NOTIFICATIONS` on Android 13+, and alert and sound (no badge) on iOS.
 3. If granted: save `enabled = true` and schedule.
-4. If denied: the switch stays off, and an inline note appears under it. It explains how to allow notifications in Settings › Notifications › Lumen (iOS) or Settings › Apps › Lumen › Notifications (Android), and offers an "Open Settings" button (`app_settings`). There is no dialog, and nothing else in the app changes.
-5. Every time the app launches or resumes with reminders on, check whether notifications are still allowed. If they are not, show the same inline note in Settings.
+4. If denied: the switch stays off and an inline card appears, with no dialog.
+   - The card reads "Notifications are off for Lumen", followed by the steps.
+   - iOS: "To allow them, open Settings, tap Notifications, choose Lumen, and turn on Allow Notifications."
+   - Android: "To allow them, open Settings, tap Apps, choose Lumen, tap Notifications, and turn them on."
+   - It ends with "You can keep using Lumen without them." and an "Open Settings" button, which calls the plugin's `openAppNotificationSettings()`.
+5. On every launch and resume with reminders on, re-check notification access. If it was revoked, show the same card while the switch stays on.
 
-### Scheduling (`reminder_planner.dart` decides what to schedule; `reminder_service.dart` does it)
+### Scheduling (`reminder_planner.dart` decides what to schedule; `ReminderController` does it)
 
-- Get the local IANA time zone with `flutter_timezone`, call `tz.setLocalLocation`, and store the zone name.
-- Details off: a single `zonedSchedule` at the next occurrence of HH:MM local, repeating daily (`matchDateTimeComponents: time`). Body: "Today's readings are ready."
-- Details on: individual notifications for the next 60 days (under iOS's limit of 64 pending notifications). Body: "{Celebration} · Gospel: {citation}", for example "27th Sunday in Ordinary Time · Gospel: Matthew 21:33-43". The window refills on every launch and resume.
-- Reschedule from scratch (cancel all, then schedule) when settings change, the app launches or resumes and the stored zone differs, or the window has less than 30 days left.
-- Every notification carries the payload `day:YYYY-MM-DD`, the date it is for.
+- Get the IANA time zone from `flutter_timezone`, call `tz.setLocalLocation`, and store it.
+- **Previews off:** one `zonedSchedule` at the next HH:MM local time, repeating daily (`matchDateTimeComponents: time`).
+  - Body: "Today's readings are ready."
+  - Payload `today`, which opens the date on which it is tapped.
+- **Previews on:** one notification per day for the next 60 days, with ids 1–60 (under iOS's limit of 64 pending notifications).
+  - Body: "{Celebration} · Gospel: {citation}", or the generic text when a date is outside the data.
+  - Payload `day:YYYY-MM-DD`, which opens that date even when tapped later.
+- **When to reschedule** (cancel all, then schedule):
+  - On launch.
+  - On settings changes.
+  - On resume, when the time zone changed or fewer than 30 days of individual reminders remain.
+- A scheduling error shows "The reminder couldn't be scheduled. Try turning it off and on again." The rest of the app is unaffected.
 
 ### Platform details
 
-- Android:
-  - Channel `daily_reading` ("Daily reading"), default importance.
-  - `AndroidScheduleMode.inexactAllowWhileIdle`. No exact-alarm permission, which Play policy restricts, so delivery can be a few minutes late.
-  - The plugin's boot receivers and `RECEIVE_BOOT_COMPLETED` are declared, so reminders survive a reboot.
-  - Core library desugaring is enabled, as the plugin requires.
-  - Visibility is private, with a generic public version ("Lumen · Daily reading reminder"), so the phone's "hide sensitive content" setting still applies.
-  - No `fullScreenIntent`. The small icon is a plain monochrome glyph.
-- iOS:
-  - Standard (`active`) interruption level, no time-sensitive or critical alerts.
-  - `AppDelegate.swift` sets the `UNUserNotificationCenter` delegate, the one line the plugin requires.
+- **Android:**
+  - Channel `daily_reading` ("Daily reading"), default importance and priority, category `reminder`.
+  - Scheduled with `AndroidScheduleMode.inexactAllowWhileIdle`. There is no exact-alarm permission, which Play policy restricts, so delivery can be a few minutes late.
+  - `RECEIVE_BOOT_COMPLETED` and the plugin's two receivers are declared, so reminders survive reboot.
+  - Core library desugaring is enabled.
+  - Visibility is `private`: on a secure lock screen with sensitive content hidden, Android shows its standard "Contents hidden" placeholder (the plugin does not support a custom public version).
+  - No full-screen intent.
+  - The status icon is a monochrome book glyph, kept from resource shrinking with `res/raw/keep.xml`.
+- **iOS:**
+  - Interruption level `active`, never time-sensitive or critical.
+  - `AppDelegate.swift` sets the `UNUserNotificationCenter` delegate, as the plugin requires.
   - Lock-screen and preview display follow the user's iOS settings. The app never claims it can force them.
 
 ### Tap handling
 
-- Warm start: `onDidReceiveNotificationResponse` parses the payload, switches to Today, and sets the date.
-- Cold start: `getNotificationAppLaunchDetails()` at bootstrap does the same.
-- A date outside the bundled range falls back to today.
+- Warm start: `onDidReceiveNotificationResponse` reaches a `NotificationRouter`. The app switches to Today, pops to its first screen, and shows the payload's date.
+- Cold start: `getNotificationAppLaunchDetails()` at bootstrap feeds the same router.
+- A date outside the bundled range shows today instead.
+
+### Known limits (documented in the README)
+
+- After travel, the reminder follows the new time zone once Lumen is opened.
+- With previews on, reminders run out if Lumen is not opened for about 60 days. Opening it refills them. With previews off, the single repeating reminder never runs out.
 
 ## 7. Error handling
 
-- Missing or corrupt assets: a plain message, "Lumen couldn't load its readings. Please reinstall the app." These are bundled assets, so this indicates a broken build.
-- A notification scheduling failure: the inline note in Settings says "Reminder couldn't be scheduled" and the app continues normally.
-- Corrupt bookmark data: start empty and keep the corrupt raw value under a backup key. No crash.
+- **Assets missing or corrupt at startup:** a plain screen, "Lumen couldn't load its readings. Please reinstall the app."
+- **Notification plugin fails to start:** the app still opens. Reminder actions fail softly, and the Settings note appears.
+- **Corrupt bookmark data:** start empty, keep the unreadable value under a backup key, no crash.
 
 ## 8. Testing
 
-- Unit tests:
-  - Citation grammar: every form listed in §4.3.
-  - Versification: psalm joins and splits, books, and the special cases, checked against known Douay text (for example Hebrew Psalm 23 resolves to text beginning "The Lord ruleth me").
-  - Reference search and word search.
-  - Bookmark store round-trip and corrupt-data recovery.
-  - Reminder planner: details on and off, the 60-day window, time zone change, and DST transitions (for example America/New_York in March and November).
-  - Payload parsing.
-- Data coverage test: every date from 2026-01-01 to 2035-12-31 has a celebration and a primary Mass whose first reading, psalm and Gospel resolve to non-empty Douay-Rheims text. Spot checks against known dates: Christmas, Easter 2026 (April 5), Ascension Sunday 2026 (May 17, US), Immaculate Conception moved in 2035, and 2026-10-05 (Galatians 1:6-12, Luke 10:25-37).
-- Widget tests: tab navigation; Today renders a fixture day; a notification payload opens Today for that date; saving from Today and Bible, and removing from Saved; the reminder switch with a fake gateway (granted, denied, revoked); the mood page with crisis line, prayer toggle and disclaimer.
+- **Python** (`cd tool && python3 -m unittest discover -s tests`):
+  - Book names and aliases.
+  - VPL parsing, with gaps reported.
+  - Every citation form in §4.3.
+  - TVTMS parsing priority.
+  - Isaiah 9 and 63–64, Psalm fallbacks and splits, Esther additions, the reviewed override path, and invalid verses.
+  - Calendar assembly: primary selection, memorial weekday lookup, vigils, incomplete-set detection, harvest needs.
+  - Harvest date choice, lectionary-number gate, and memorial classification.
+  - USCCB page parsing, against a synthetic fixture.
+  - The generated assets, which must pass validation and the spot checks:
+    - Ash Wednesday 2026-02-18, Easter 2026-04-05, and Ascension 2026-05-17 (US Sunday).
+    - Christmas 2026 lists three Masses, and Christmas Eve two.
+    - 2026-10-05 is Galatians 1:6-12 and Luke 10:25-37.
+    - The Immaculate Conception moves to Monday in every year where Dec 8 is a Sunday.
+- **Dart** (`flutter test`):
+  - Bible model and labels, psalm numbering, reference parsing, search.
+  - Calendar model and TodayController.
+  - Bookmark store, including corrupt data.
+  - Reminder planner: previews off and on, a time already past today, and DST in America/New_York.
+  - Reminder controller with a fake gateway: no prompt until enabled, granted, denied, revoked on resume, time zone change, scheduling failure.
+  - Widget tests:
+    - Every screen and the tab shell.
+    - Back navigation.
+    - Notification payloads, both cold and warm.
+    - Save and remove.
+    - Mood crisis line and disclaimer.
+    - Permission help on iOS and Android.
+    - 200% text with no overflow.
+  - Real-asset tests: every 2026–2035 day resolves to verse text, and the mood passages exist.
 - `flutter analyze` must be clean.
 
 ## 9. Toolchain and verification limits
 
-- Required: Flutter SDK (stable). It is not installed yet and will be installed only with the user's consent.
-- iOS builds need Xcode (installed by the user from the App Store). Android builds need the Android SDK. Without them, verification stops at `flutter analyze` and `flutter test`. Native builds and on-device notification behavior must then be checked by the user. A short checklist will be provided.
+- Flutter 3.47.5 (stable) and Dart 3.13.4, installed with Homebrew. Python 3.12, standard library only.
+- This Mac has no Xcode or Android SDK, so verification stops at `flutter analyze` and `flutter test`. Native builds and on-device notification behavior go to the user through the README's device checklist.
+- The app identifier `app.lumen.lumen` is a placeholder to change before publishing.
 
 ## 10. Risks
 
-- The open calendar engine could have edge-case errors. Mitigations: the spot-check tests, and the USCCB reconciliation report lists any disagreement between the engine's citations and USCCB for overlapping past dates.
-- Douay-Rheims versification can differ in rare places beyond those listed. Any unmappable citation fails the build, and the citation shown always comes from the Lectionary.
-- The data runs only to 2035. Rerunning `tool/` and shipping an update extends it, and this is documented in the README.
+- **Calendar engine errors:** the engine could have edge-case mistakes. Mitigations are the spot checks, the fill report for human audit, and the fact that USCCB-derived weekday sets are gated by lectionary number.
+- **Deuterocanonical citations:** each one depends on a reviewed override, a one-time review effort that blocks the build until done.
+- **Data ends at 2035:** rerunning `tool/` and shipping an update extends it. This is documented in the README.
