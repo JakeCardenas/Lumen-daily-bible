@@ -1,7 +1,7 @@
 """Builds assets/liturgy/calendar_us.json (US calendar, 2026-2035).
 
 Run from tool/: python3 build_calendar.py
-Exit codes: 0 written; 2 run harvest_usccb.py first; 3 review tool/data/dc_overrides_todo.json;
+Exit codes: 0 written; 2 run harvest_aelf.py first; 3 review tool/data/dc_overrides_todo.json;
 4 validation or spot checks failed.
 """
 import json
@@ -45,7 +45,7 @@ def main() -> int:
         write_json(DATA / "harvest_needed.json", list(result.needs.values()))
         kinds = {k: sum(1 for n in result.needs.values() if n["kind"] == k) for k in ("set", "memorial")}
         print(f"{len(result.needs)} needs ({kinds['set']} reading sets, {kinds['memorial']} memorials). "
-              "Next: python3 harvest_usccb.py")
+              "Next: python3 harvest_aelf.py")
         return 2
     if result.missing_overrides:
         write_json(DATA / "dc_overrides_todo.json", result.missing_overrides)

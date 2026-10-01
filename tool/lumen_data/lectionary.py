@@ -149,6 +149,17 @@ def underlying_weekday(day: date, by_date: dict[date, list[dict]], lect: dict[st
     return None
 
 
+READING_ORDER = ("palm_gospel", "first_reading", "responsorial_psalm", "second_reading", "third_reading",
+                 "fourth_reading", "fifth_reading", "sixth_reading", "seventh_reading", "epistle",
+                 "gospel_acclamation", "gospel")
+
+
+def ordered_readings(readings: dict) -> dict:
+    """Readings in Lectionary order; unknown kinds keep their place after the known ones."""
+    known = {kind: readings[kind] for kind in READING_ORDER if kind in readings}
+    return {**known, **{k: v for k, v in readings.items() if k not in known}}
+
+
 def convert_readings(readings: dict, event: dict, versifier: Versifier, douay: DouayIndex) -> list[dict]:
     out = []
     for kind, value in readings.items():
@@ -242,14 +253,21 @@ class CalendarBuilder:
         if memorial is None:
             self.needs.setdefault(f"memorial:{key}", {"kind": "memorial", "key": key, "first_date": day.isoformat()})
             return None
-        if memorial["use"] == "proper":
-            return self._mass(None, f"{key}/", None, event, day)
         weekday = underlying_weekday(day, self.by_date, self.lect)
         if weekday is None:
             raise ValueError(f"cannot find the weekday that {key} replaces on {day}")
         weekday_key, weekday_cycle = weekday
+        weekday_id = f"{weekday_key}/{weekday_cycle}"
         readings = variants(self._entry(weekday_key, weekday_cycle, day))[0][1]
-        return self._mass(None, f"{weekday_key}/{weekday_cycle}", readings, event, day)
+        if memorial["use"] != "proper":
+            return self._mass(None, weekday_id, readings, event, day)
+        # The memorial's own readings (often just the Gospel) replace those of the weekday.
+        base = readings if is_complete(readings) else self.fill["sets"].get(weekday_id, {}).get("readings")
+        if base is None:
+            self.needs.setdefault(weekday_id, {"kind": "set", "set": weekday_id, "first_date": day.isoformat()})
+            return None
+        combined = ordered_readings({**base, **memorial["readings"]})
+        return self._mass(None, f"{weekday_id}+{key}", combined, event, day)
 
     def _vigil_mass(self, event: dict, day: date) -> dict | None:
         target, cycle = event["is_vigil_for"], cycle_of(event)

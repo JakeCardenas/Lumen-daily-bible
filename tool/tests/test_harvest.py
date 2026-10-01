@@ -1,11 +1,13 @@
 import unittest
 from datetime import date
 
-from lumen_data.harvest import accept, candidate_dates
-from lumen_data.usccb import UsccbDay
+from lumen_data.aelf import AelfDay
+from lumen_data.harvest import accept, candidate_dates, classify_memorial
 
-READINGS = {"first_reading": "Galatians 1:6-12", "responsorial_psalm": "Psalm 111:1b-2, 7-8, 9, 10c",
-            "gospel_acclamation": "John 13:34", "gospel": "Luke 10:25-37"}
+READINGS = {"first_reading": "Galatians 1:6-12", "responsorial_psalm": "Psalm 111:1-2, 7-8, 9, 10c",
+            "gospel": "Luke 10:25-37"}
+WEEKDAY_INFO = {"annee": "Paire", "temps_liturgique": "ordinaire", "semaine": "27ème Semaine du Temps Ordinaire",
+                "jour": "lundi", "ligne1": "lundi, 27ème Semaine du Temps Ordinaire", "ligne2": "", "ligne3": ""}
 
 
 def ev(day, key, grade, **extra):
@@ -21,6 +23,10 @@ EVENTS = {
 }
 
 
+def page(info=None, **masses):
+    return AelfDay(info if info is not None else WEEKDAY_INFO, masses or {"day": READINGS})
+
+
 class HarvestTest(unittest.TestCase):
     def test_candidates_match_key_and_cycle_newest_first(self):
         need = {"kind": "set", "set": "OrdWeekday27Monday/II"}
@@ -34,28 +40,42 @@ class HarvestTest(unittest.TestCase):
         need = {"kind": "memorial", "key": "StThereseChildJesus"}
         self.assertEqual(candidate_dates(need, EVENTS, before=date(2026, 1, 1)), [date(2025, 10, 1)])
 
-    def test_vigil_night_and_dawn_masses_are_not_harvested_automatically(self):
-        need = {"kind": "set", "set": "Christmas/A#night"}
-        self.assertEqual(candidate_dates(need, EVENTS, before=date(2026, 1, 1)), [])
-
-    def test_other_variants_use_the_date_page(self):
-        need = {"kind": "set", "set": "OrdWeekday27Monday/II#schema_one"}
+    def test_variant_sets_use_the_date_page(self):
+        need = {"kind": "set", "set": "OrdWeekday27Monday/II#vigil"}
         self.assertEqual(candidate_dates(need, EVENTS, before=date(2026, 10, 1)), [date(2024, 10, 7), date(2022, 10, 3)])
 
-    def test_weekday_pages_must_carry_the_expected_lectionary_number(self):
+    def test_weekday_pages_must_match_week_day_and_year(self):
         need = {"kind": "set", "set": "OrdWeekday27Monday/II"}
-        record = accept(need, date(2024, 10, 7), UsccbDay("Monday", 461, READINGS))
+        record = accept(need, date(2024, 10, 7), page())
         self.assertEqual(record["readings"], READINGS)
-        self.assertEqual(record["date"], "2024-10-07")
-        self.assertIsNone(accept(need, date(2024, 10, 7), UsccbDay("A memorial", 650, READINGS)))
+        self.assertEqual((record["date"], record["source"]), ("2024-10-07", "aelf"))
+        self.assertIsNone(accept(need, date(2024, 10, 7), page({**WEEKDAY_INFO, "semaine": "28ème Semaine du Temps Ordinaire"})))
+        self.assertIsNone(accept(need, date(2024, 10, 7), page({**WEEKDAY_INFO, "jour": "mardi"})))
+        self.assertIsNone(accept(need, date(2024, 10, 7), page({**WEEKDAY_INFO, "annee": "Impaire"})))
+        self.assertIsNone(accept(need, date(2024, 10, 7), page({**WEEKDAY_INFO, "ligne3": "Mémoire"})))
+        self.assertIsNotNone(accept(need, date(2024, 10, 7), page({**WEEKDAY_INFO, "ligne3": "Mémoire facultative"})))
+
+    def test_sunday_pages_must_match_the_cycle_and_variants_pick_their_mass(self):
+        need = {"kind": "set", "set": "Christmas/A#night"}
+        info = {"annee": "A", "temps_liturgique": "noel", "ligne1": "Nativité du Seigneur"}
+        night = {**READINGS, "gospel": "Luke 2:1-14"}
+        self.assertEqual(accept(need, date(2022, 12, 25), page(info, night=night, day=READINGS))["readings"], night)
+        self.assertIsNone(accept(need, date(2022, 12, 25), page({**info, "annee": "B"}, night=night)))
+        self.assertIsNone(accept(need, date(2022, 12, 25), page(info, day=READINGS)))
 
     def test_incomplete_pages_are_rejected(self):
         need = {"kind": "set", "set": "StMartha/"}
-        self.assertIsNone(accept(need, date(2025, 7, 29), UsccbDay("x", 607, {"gospel": "John 11:19-27"})))
+        self.assertIsNone(accept(need, date(2025, 7, 29), page({}, day={"gospel": "John 11:19-27"})))
 
-    def test_memorial_classification(self):
-        need = {"kind": "memorial", "key": "StThereseChildJesus"}
-        self.assertEqual(accept(need, date(2025, 10, 1), UsccbDay("x", 455, READINGS))["use"], "weekday")
-        proper = accept(need, date(2025, 10, 1), UsccbDay("x", 650, READINGS))
-        self.assertEqual((proper["use"], proper["readings"]), ("proper", READINGS))
-        self.assertIsNone(accept(need, date(2025, 10, 1), UsccbDay("x", None, READINGS)))
+    def test_memorials_keep_only_their_proper_readings(self):
+        weekday = {"first_reading": "Nehemiah 8:1-4a, 5-6, 7b-12", "responsorial_psalm": "Psalm 19:8, 9, 10, 11",
+                   "gospel": "Luke 10:1-12"}
+        same = classify_memorial(date(2025, 10, 1), page({}, day=weekday), weekday)
+        self.assertEqual(same["use"], "weekday")
+        self.assertNotIn("readings", same)
+        guardian = {**weekday, "responsorial_psalm": "Psalm 19:8-11", "gospel_acclamation": "Psalm 103:21",
+                    "gospel": "Matthew 18:1-5, 10"}
+        proper = classify_memorial(date(2025, 10, 2), page({}, day=guardian), weekday)
+        self.assertEqual(proper["use"], "proper")
+        self.assertEqual(proper["readings"], {"gospel_acclamation": "Psalm 103:21", "gospel": "Matthew 18:1-5, 10"})
+        self.assertIsNone(classify_memorial(date(2025, 10, 2), page({}, day={"gospel": "Matthew 18:1-5"}), weekday))

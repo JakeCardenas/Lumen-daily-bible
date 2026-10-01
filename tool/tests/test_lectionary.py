@@ -114,6 +114,19 @@ class LectionaryTest(unittest.TestCase):
         self.assertEqual(sunday[3]["label"], "Alleluia")
         self.assertEqual(validate(result.calendar, douay()), [])
 
+    def test_memorial_proper_readings_overlay_the_weekday(self):
+        fill = {"sets": {"OrdWeekday26Saturday/II": {"readings": WEEKDAY}},
+                "memorials": {"StThereseChildJesus": {"use": "proper", "readings": {"gospel": "Luke 9:1-6"}}}}
+        result = self.build(fill)
+        self.assertEqual(result.needs, {})
+        set_id = "OrdWeekday26Thursday/II+StThereseChildJesus"
+        self.assertEqual(result.calendar["days"]["2026-10-01"]["masses"], [{"title": None, "set": set_id}])
+        readings = {r["kind"]: r["citation"] for r in result.calendar["sets"][set_id]}
+        self.assertEqual(readings["gospel"], "Luke 9:1-6")
+        self.assertEqual(readings["first_reading"], WEEKDAY["first_reading"])
+        self.assertEqual([r["kind"] for r in result.calendar["sets"][set_id]],
+                         ["first_reading", "responsorial_psalm", "gospel_acclamation", "gospel"])
+
     def test_open_data_citations_that_do_not_convert_are_harvested_instead(self):
         lect = lectionary()
         lect["feriale_per_annum_II"]["OrdWeekday26Monday"] = {**WEEKDAY, "first_reading": "Galatians 17:20b-25"}
