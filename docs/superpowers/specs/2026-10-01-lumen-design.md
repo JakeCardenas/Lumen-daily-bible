@@ -1,7 +1,7 @@
 # Lumen — Design Spec
 
 Date: 2026-10-01
-Status: Approved design (revision 2: data sources and conversion details settled during research)
+Status: Approved design (revision 3: citation source, numbering and coverage as built; see the SDD ledger rulings)
 
 ## 1. Purpose
 
@@ -9,7 +9,7 @@ Lumen is a calm, simple Roman Catholic Scripture app for iOS and Android, built 
 
 ### Success criteria
 
-- Every date from 2026-01-01 through 2035-12-31 shows that day's celebration and complete Mass readings with verse text, fully offline.
+- Every date from 2026-01-01 through 2030-02-23 shows that day's celebration and complete Mass readings with verse text, fully offline.
 - The Bible is browsable and searchable offline, by words and by reference.
 - Bookmarks persist across launches.
 - The daily reminder works offline, fires at the user's chosen local time, and opens the right day's readings when tapped.
@@ -29,11 +29,11 @@ Lumen is a calm, simple Roman Catholic Scripture app for iOS and Android, built 
 |---|---|---|
 | Translation | Douay-Rheims, 1899 American edition (Challoner revision), from eBible.org | Public domain and Church-approved, with all 73 books. The first candidate file (a TSV on GitHub) was missing Psalm 9:22–39, had a shifted Exodus 6, blank verses, and a merged Job 25, so it was rejected. |
 | Calendar | US national calendar: Ascension and Epiphany on Sunday, US proper saints | Primary audience. |
-| Calendar strategy | Pre-built per-date table for 2026–2035, bundled | Accurate, because it is generated from a maintained open engine. Simple and fully offline at runtime. |
+| Calendar strategy | Pre-built per-date table from 2026-01-01 to 2030-02-23, bundled; later dates come in app updates | Accurate, because it is generated from a maintained open engine. Simple and fully offline at runtime. |
 | Calendar events | Liturgical Calendar API (Apache-2.0): event keys, names, ranks, colors, seasons, cycles | Its embedded readings have gaps and errors, so they are not used. |
-| Reading citations | The API project's lectionary source files (Apache-2.0), accepted only when complete. Otherwise the citations come from USCCB daily pages (citations and lectionary numbers only, never text). | The open files lack most Ordinary Time weekdays and some feasts. Citations are factual references. The user approved a one-time harvest of roughly 400 pages. |
+| Reading citations | The API project's lectionary source files (Apache-2.0), accepted only when complete and convertible. Otherwise the citations come from AELF's daily Mass API (api.aelf.org, General Roman Calendar; citations only, never text). | The open files lack all Year B/C Sundays, most Ordinary Time weekdays and many feasts. USCCB refused automated requests (HTTP 403), so the user chose AELF, which follows the same Roman Lectionary. The user approved up to 675 requests; 664 were used. |
 | Verse numbering | All conversion happens in the build (Python). The app receives ready-made Douay-Rheims verse ranges. | Keeps the error-prone logic in one place, where every reading is checked before shipping. |
-| Numbering data | STEPBible TVTMS (Tyndale House, CC BY 4.0) for Hebrew-numbered books. Daniel and the New Testament keep the same numbers. Esther's lettered additions use fixed rules. Books the Lectionary numbers from the Greek (Tobit, Judith, Wisdom, Sirach, Baruch, 1–2 Maccabees) need a reviewed per-citation entry. | No single scheme matches the US Lectionary's numbering for the Greek-numbered books. |
+| Numbering data | STEPBible TVTMS (Tyndale House, CC BY 4.0): Hebrew-to-Latin rows for Hebrew-numbered books, Greek-to-Latin rows for the New Testament, plus reviewed Douay-Rheims joins TVTMS lacks (Acts 19, 1 Thessalonians 4, 2 Thessalonians 2). Daniel keeps the same numbers. Esther's lettered additions use fixed rules. Books the Lectionary numbers from the Greek (Tobit, Judith, Wisdom, Sirach, Baruch, 1–2 Maccabees) need a reviewed per-citation entry. | No single scheme matches the US Lectionary's numbering for the Greek-numbered books. |
 | Bible storage and search | Bundled JSON, loaded off the main thread, searched in memory | About 35,800 verses, so simple word-prefix matching is fast enough with no database. |
 | Local storage | `shared_preferences` | Small data, no network, no account. |
 | State management | `provider` with `ChangeNotifier`s and constructor-injected services | Simple and testable. |
@@ -63,8 +63,8 @@ assets/
   fonts/                           Literata (OFL)
   licenses/                        Apache-2.0 (calendar data), OFL, TVTMS notice
 tool/                              Python 3 data build (standard library only)
-  lumen_data/                      books, bible, citations, versification, litcal, lectionary, usccb, harvest
-  build_bible.py  build_calendar.py  harvest_usccb.py  show_verses.py  check_moods.py
+  lumen_data/                      books, bible, citations, versification, litcal, lectionary, aelf, harvest
+  build_bible.py  build_calendar.py  harvest_aelf.py  show_verses.py  check_moods.py
   data/                            lectionary_fill.json, dc_overrides.json, fill_report.md (committed)
   cache/                           downloads (git-ignored; TVTMS is not redistributed)
   tests/                           unittest suites
@@ -82,31 +82,34 @@ Screens depend on repositories and controllers through `provider`, and the notif
 
 ### 4.2 Calendar and readings
 
-1. Fetch the US calendar for 2026–2035 (civil years) from the API and cache it. Fetch the lectionary source files.
-2. For each date, the primary celebration is the highest-ranked event that is not a vigil Mass. Optional memorials, including the Saturday memorial of Mary, are never primary and are listed separately.
+1. Fetch the US calendar for the build's civil years from the API and cache it. Fetch the lectionary source files.
+2. For each date, the primary celebration is the highest-ranked event that is not a vigil Mass. Optional memorials (including the Saturday memorial of Mary) and Lenten commemorations are never primary and are listed separately. A day with only optional memorials (two memorials that coincide) is the weekday, named the way LitCal names weekdays.
 3. Resolve readings by event key and cycle:
    - Sunday cycle A/B/C for Sundays and feasts. Transfiguration is keyed by the date's Sunday cycle.
    - Weekday cycle I/II for Ordinary Time weekdays.
    - Seasonal weekday files and the saints' file otherwise.
    - A set is complete only if it has a first reading, a Gospel, and a responsorial psalm with verse numbers, and every citation parses. "Psalm 71" alone counts as incomplete.
-4. Obligatory memorials take whatever USCCB shows for them, recorded once per memorial:
-   - Weekday readings, when the page's lectionary number falls in the weekday range 175–508. The weekday the memorial replaces is found from the other days of the same week.
-   - Proper readings, recorded as their own set, when the number falls outside that range.
+4. Obligatory memorials take whatever AELF shows for them, recorded once per memorial:
+   - Weekday readings, when every reading on the page covers verses of the weekday set it replaces. The weekday is the one listed on the same date, or found from the other days of the week (the Monday and Tuesday before Ash Wednesday continue the previous week).
+   - Otherwise only the readings that differ are recorded, and they replace the weekday's.
+   - A memorial that always displaces a weekday fixed by date (Sts. Basil and Gregory) keeps the whole page.
 5. Masses:
    - Christmas Day lists Night, Dawn, and Day.
    - Christmas, Pentecost, the Assumption, the Nativity of John the Baptist, and Sts. Peter and Paul add a "Vigil Mass (evening)" to the day before.
    - The Easter Vigil is Holy Saturday's Mass.
    - Saturday-evening Sunday vigils are not listed.
-6. Gaps become harvest needs. `harvest_usccb.py` handles them as follows:
-   - It picks past dates (2019 to today) where that key was the primary celebration, using cached API calendars for those years.
-   - It fetches the USCCB page for each date, at least 1.5 s apart, cached, with a hard cap (default 600 network requests).
-   - It parses headings, citations, and the lectionary number only.
-   - Ordinary Time weekday pages are accepted only if the lectionary number equals `305 + (week − 1) × 6 + dayIndex` (Monday = 0). For example, week 27 Monday = 461.
+6. Gaps become harvest needs. `harvest_aelf.py` handles them as follows:
+   - It picks past dates (2010 to today; AELF has pages from 2016) where that key was the primary celebration, then dates where a US-only memorial or a memorial known to keep the weekday readings displaced it. Cached pages are tried first.
+   - It fetches AELF's page for each date, at least 1.5 s apart, cached, with a hard cap on network requests (`--max-pages`). The US Ascension (Sunday) is read from AELF's Thursday page.
+   - It reads citations only, converting French book abbreviations and Greek psalm numbers.
+   - A page is accepted only if AELF's own details match: week, day and year parity for Ordinary Time weekdays; the year letter for Sundays and feasts; the rank for feasts and solemnities; no obligatory memorial on a plain weekday.
+   - A second reading AELF lists as another first reading takes the second-reading slot where the open data has one.
+   - Reviewed typo fixes in `tool/data/fill_corrections.json` are applied, and listed in the fill report.
    - Results go to `tool/data/lectionary_fill.json`, plus a human-readable `fill_report.md`.
 7. Output `calendar_us.json`:
 
 ```json
-{"version": 1, "calendar": "United States", "start": "2026-01-01", "end": "2035-12-31",
+{"version": 1, "calendar": "United States", "start": "2026-01-01", "end": "2030-02-23",
  "sets": {"OrdSunday27/A": [{"kind": "first_reading", "label": "First Reading", "citation": "Isaiah 5:1-7",
    "alternatives": [], "passages": [{"book": "ISA", "ranges": [[5, 1, 5, 7]]}],
    "douay": "Isaias 5:1-7", "differs": false, "partial": false}]},
@@ -125,7 +128,7 @@ The build fails, and nothing is written, if any of these is true:
 - **Parser:**
   - Accepts `Book C:V-V, V`, verse letters (`5-6ab`), `and`, and chapter-crossing ranges with any dash (`52:13—53:12`).
   - A `;` starts a new chapter, or a new book when a name follows (`John 1:7; Luke 1:17`).
-  - Accepts `A|B` alternatives, `Cf.`/`See` prefixes, dual psalm numbers `103 (102)` (the larger is the Hebrew number), whole chapters, the European `84,5`, Esther's lettered chapters (`C:12`), and lectionary and USCCB abbreviations.
+  - Accepts `A|B` alternatives, `Cf.`/`See` prefixes, dual psalm numbers `103 (102)` (the larger is the Hebrew number), whole chapters, the European `84,5`, Esther's lettered chapters (`C:12`), and lectionary abbreviations. AELF's French references are converted to these forms first.
   - A typo seen in the source data ("Hewbrews") is accepted.
 - **Hebrew-numbered books** are converted with TVTMS rows that describe Latin Bibles. Rows specific to Douay-Rheims win. Where TVTMS lists no change, the verse keeps its number, except that Psalms fall back to the standard Hebrew→Vulgate psalm rule. When one Hebrew verse becomes two Latin verses, verse parts pick the half (`63:19b` → `64:1`).
 - **Esther's additions** use fixed rules: A:1–11 → 11:2–12, A:12–17 → 12:1–6, B → 13:1–7, C:1–11 → 13:8–18, C:12–30 → 14:1–19, E → 16:1–24, F:1–10 → 10:4–13.
@@ -263,8 +266,8 @@ The tone is calm. Warm light colors: ivory background `#FBF7F0`, warm white surf
   - TVTMS parsing priority.
   - Isaiah 9 and 63–64, Psalm fallbacks and splits, Esther additions, the reviewed override path, and invalid verses.
   - Calendar assembly: primary selection, memorial weekday lookup, vigils, incomplete-set detection, harvest needs.
-  - Harvest date choice, lectionary-number gate, and memorial classification.
-  - USCCB page parsing, against a synthetic fixture.
+  - Harvest date choice, AELF page checks, and memorial classification.
+  - AELF reference conversion and page parsing, including every quirk seen in the cached pages.
   - The generated assets, which must pass validation and the spot checks:
     - Ash Wednesday 2026-02-18, Easter 2026-04-05, and Ascension 2026-05-17 (US Sunday).
     - Christmas 2026 lists three Masses, and Christmas Eve two.
@@ -284,17 +287,17 @@ The tone is calm. Warm light colors: ivory background `#FBF7F0`, warm white surf
     - Mood crisis line and disclaimer.
     - Permission help on iOS and Android.
     - 200% text with no overflow.
-  - Real-asset tests: every 2026–2035 day resolves to verse text, and the mood passages exist.
+  - Real-asset tests: every day in the calendar resolves to verse text, and the mood passages exist.
 - `flutter analyze` must be clean.
 
 ## 9. Toolchain and verification limits
 
 - Flutter 3.47.5 (stable) and Dart 3.13.4, installed with Homebrew. Python 3.12, standard library only.
-- This Mac has no Xcode or Android SDK, so verification stops at `flutter analyze` and `flutter test`. Native builds and on-device notification behavior go to the user through the README's device checklist.
+- Xcode 27 and CocoaPods were installed during the build; the app was built and launched on the iOS Simulator (iPhone 18 Pro, iOS 27). There is no Android SDK, so the Android build is unverified. On-device notification behavior goes to the user through the README's device checklist.
 - The app identifier `app.lumen.lumen` is a placeholder to change before publishing.
 
 ## 10. Risks
 
-- **Calendar engine errors:** the engine could have edge-case mistakes. Mitigations are the spot checks, the fill report for human audit, and the fact that USCCB-derived weekday sets are gated by lectionary number.
+- **Calendar engine errors:** the engine could have edge-case mistakes. Mitigations are the spot checks, the fill report (audited for every Sunday, feast and memorial), and AELF page checks by week, day, year and rank.
 - **Deuterocanonical citations:** each one depends on a reviewed override, a one-time review effort that blocks the build until done.
-- **Data ends at 2035:** rerunning `tool/` and shipping an update extends it. This is documented in the README.
+- **Data ends at 2030-02-23:** the 7th and 8th Sundays of Year B had no AELF page yet. Rerunning `tool/` with a later `END` and shipping an update extends it. This is documented in the README.
