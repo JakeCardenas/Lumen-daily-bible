@@ -9,6 +9,10 @@ import '../mood/mood_picker.dart';
 import '../settings/settings_screen.dart';
 import 'reading_section.dart';
 
+/// "Optional memorial: Saint Bruno" or "Optional memorials: Saint Bruno; Blessed Marie Rose Durocher".
+String optionalMemorialsLine(List<String> names) =>
+    '${names.length == 1 ? 'Optional memorial' : 'Optional memorials'}: ${names.join('; ')}';
+
 /// The Today tab: the day's celebration, its Mass readings, and optional mood support.
 class TodayScreen extends StatelessWidget {
   const TodayScreen({super.key});
@@ -47,7 +51,7 @@ class TodayScreen extends StatelessWidget {
             if (day.optionalMemorials.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Optional memorial: ${day.optionalMemorials.join('; ')}', style: muted),
+                child: Text(optionalMemorialsLine(day.optionalMemorials), style: muted),
               ),
           ],
           const SizedBox(height: 16),

@@ -117,6 +117,11 @@ def is_complete(readings) -> bool:
     return True
 
 
+def display_name(name: str) -> str:
+    """LitCal tags US-only celebrations, e.g. '[ US ] Blessed Marie Rose Durocher'; the app is US-only."""
+    return re.sub(r"^\[[^\]]*\]\s*", "", name)
+
+
 def weekday_name(key: str) -> str:
     """'OrdWeekday22Tuesday' -> 'Tuesday of the 22nd Week of Ordinary Time', as LitCal names them."""
     match = _ORD_WEEKDAY.match(key)
@@ -243,11 +248,12 @@ class CalendarBuilder:
             if is_vigil(event) and event.get("is_vigil_for") in VIGIL_FOR:
                 masses.append(self._vigil_mass(event, day))
         return {
-            "name": primary["name"],
+            "name": display_name(primary["name"]),
             "season": primary.get("liturgical_season_lcl") or "",
             "colors": list(primary.get("color") or []),
             "rank": rank_label(primary),
-            "optional": [e["name"] for e in events if e["grade"] in (1, 2) and not is_vigil(e) and e is not primary],
+            "optional": [display_name(e["name"]) for e in events
+                         if e["grade"] in (1, 2) and not is_vigil(e) and e is not primary],
             "masses": [m for m in masses if m is not None],
         }
 
@@ -263,7 +269,7 @@ class CalendarBuilder:
             "season": primary.get("liturgical_season_lcl") or "",
             "colors": ["green"],
             "rank": None,
-            "optional": [e["name"] for e in events if e["grade"] in (1, 2) and not is_vigil(e)],
+            "optional": [display_name(e["name"]) for e in events if e["grade"] in (1, 2) and not is_vigil(e)],
             "masses": [m for m in [self._mass(None, f"{key}/{cycle}", readings, primary, day)] if m is not None],
         }
 

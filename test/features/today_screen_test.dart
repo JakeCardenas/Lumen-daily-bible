@@ -22,6 +22,12 @@ void main() {
     expect(find.text('Alleluia'), findsOneWidget);
   });
 
+  test('optional memorials are labeled singular or plural', () {
+    expect(optionalMemorialsLine(['Saint Bruno']), 'Optional memorial: Saint Bruno');
+    expect(optionalMemorialsLine(['Saint Bruno', 'Blessed Marie Rose Durocher']),
+        'Optional memorials: Saint Bruno; Blessed Marie Rose Durocher');
+  });
+
   testWidgets('moves between days and back to today', (tester) async {
     useTallScreen(tester);
     final deps = await TestDeps.create();

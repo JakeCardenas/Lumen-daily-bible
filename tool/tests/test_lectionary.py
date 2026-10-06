@@ -3,8 +3,8 @@ from datetime import date
 
 from lumen_data.bible import DouayIndex
 from lumen_data.lectionary import (CalendarBuilder, advent_start, is_complete, ord_weekday_lectionary_number,
-                                   primary_event, rank_label, spot_check, sunday_cycle, underlying_weekday, validate,
-                                   weekday_name)
+                                   display_name, primary_event, rank_label, spot_check, sunday_cycle, underlying_weekday,
+                                   validate, weekday_name)
 from lumen_data.versification import TvtmsMap, Versifier
 
 WEEKDAY = {"first_reading": "Galatians 1:6-12", "responsorial_psalm": "Psalm 111:1b-2, 7-8",
@@ -187,6 +187,11 @@ class LectionaryTest(unittest.TestCase):
         self.assertIsNone(day["rank"])
         self.assertEqual(day["optional"], ["Immaculate Heart of the Blessed Virgin Mary", "Saint Anthony of Padua"])
         self.assertEqual(day["masses"], [{"title": None, "set": "OrdWeekday26Saturday/II"}])
+
+    def test_display_names_drop_litcal_region_tags(self):
+        self.assertEqual(display_name("[ US ] Blessed Marie Rose Durocher, Virgin"), "Blessed Marie Rose Durocher, Virgin")
+        self.assertEqual(display_name("[ USA ] Thanksgiving"), "Thanksgiving")
+        self.assertEqual(display_name("Saint Bruno, Priest"), "Saint Bruno, Priest")
 
     def test_weekday_names(self):
         self.assertEqual(weekday_name("OrdWeekday1Monday"), "Monday of the 1st Week of Ordinary Time")
