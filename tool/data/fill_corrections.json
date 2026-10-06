@@ -7,6 +7,22 @@
         "corrected": "Mark 10:45",
         "why": "AELF (2021-05-26) gives 'cf. Mt 10, 45', but Matthew 10 has 42 verses; the Gospel that day is Mark 10:32-45."
       }
+    },
+    "NativityVirginMary/": {
+      "first_reading": {
+        "aelf": "Micah 5:1-4a|Romans 8:28, 30",
+        "corrected": "Micah 5:1-4a|Romans 8:28-30",
+        "why": "AELF (2026-09-08) gives 'Rm 8, 28,30'; the reading is Romans 8:28-30."
+      }
+    }
+  },
+  "memorials": {
+    "BeheadingJohnBaptist": {
+      "gospel": {
+        "aelf": "Mark 6:17, 29",
+        "corrected": "Mark 6:17-29",
+        "why": "AELF (2026-08-29) gives 'Mc 6, 17, 29'; the Gospel is Mark 6:17-29."
+      }
     }
   }
 }

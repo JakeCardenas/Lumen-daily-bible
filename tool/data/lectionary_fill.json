@@ -720,9 +720,12 @@
       "source": "aelf",
       "day": "La Nativité de la Bienheureuse Vierge Marie / Fête",
       "readings": {
-        "first_reading": "Micah 5:1-4a|Romans 8:28, 30",
+        "first_reading": "Micah 5:1-4a|Romans 8:28-30",
         "responsorial_psalm": "Psalm 13:6ab, 6c",
         "gospel": "Matthew 1:1-16, 18-23|Matthew 1:18-23"
+      },
+      "corrections": {
+        "first_reading": "AELF (2026-09-08) gives 'Rm 8, 28,30'; the reading is Romans 8:28-30."
       }
     },
     "OrdSunday10/B": {
@@ -5336,7 +5339,10 @@
       "use": "proper",
       "readings": {
         "gospel_acclamation": "Matthew 5:10",
-        "gospel": "Mark 6:17, 29"
+        "gospel": "Mark 6:17-29"
+      },
+      "corrections": {
+        "gospel": "AELF (2026-08-29) gives 'Mc 6, 17, 29'; the Gospel is Mark 6:17-29."
       }
     },
     "GuardianAngels": {
@@ -5635,11 +5641,7 @@
       "date": "2024-12-14",
       "source": "aelf",
       "day": "samedi, 2ème Semaine de l'Avent / S. Jean de la Croix, prêtre,docteur de l'Église",
-      "use": "proper",
-      "readings": {
-        "gospel_acclamation": "Luke 3:4, 6",
-        "gospel": "Matthew 17:10-13"
-      }
+      "use": "weekday"
     },
     "StJohnNeumann": {
       "date": "2026-01-05",
@@ -5669,11 +5671,7 @@
       "date": "2025-12-13",
       "source": "aelf",
       "day": "samedi, 2ème Semaine de l'Avent / Ste. Lucie, vierge et martyre",
-      "use": "proper",
-      "readings": {
-        "gospel_acclamation": "Luke 3:4, 6",
-        "gospel": "Matthew 17:10-13"
-      }
+      "use": "weekday"
     },
     "StMartha": {
       "date": "2026-07-29",

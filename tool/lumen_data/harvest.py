@@ -131,16 +131,35 @@ def accept(need: dict, day: date, page: AelfDay, slots=(), during_memorial: bool
     return {**_record(day, page), "readings": _fit_slots(readings, slots)}
 
 
-def _anchor(kind: str, citation: str) -> tuple | None:
-    """Where a reading starts; psalms by number only. Formatting differences between sources don't matter."""
+def _footprint(kind: str, citation: str) -> set[tuple] | None:
+    """The verses a reading covers (psalms by number only), so sources that select verses differently still match:
+    the US reads Matthew 17:9a, 10-13 where AELF reads Matthew 17:10-13."""
+    footprint = set()
     try:
-        first = parse(split_alternatives(citation)[0])[0]
-    except (CitationError, IndexError):
+        for option in split_alternatives(citation):
+            for cited in parse(option):
+                chapters = {int(c) for c in cited.chapters} | {int(p.chapter) for sp in cited.spans
+                                                                 for p in (sp.start, sp.end)}
+                if kind == "responsorial_psalm" or cited.is_whole_chapter:
+                    footprint |= {(cited.book, chapter) for chapter in chapters}
+                    continue
+                for span in cited.spans:
+                    first, last = int(span.start.chapter), int(span.end.chapter)
+                    for chapter in range(first, last + 1):
+                        low = span.start.verse if chapter == first else 1
+                        high = span.end.verse if chapter == last else 200
+                        footprint |= {(cited.book, chapter, verse) for verse in range(low, high + 1)}
+    except (CitationError, ValueError):
         return None
-    if first.is_whole_chapter:
-        return first.book, first.chapters[0]
-    start = first.spans[0].start
-    return (first.book, start.chapter) if kind == "responsorial_psalm" else (first.book, start.chapter, start.verse)
+    return footprint or None
+
+
+def _same_reading(kind: str, a: str, b: str) -> bool:
+    first, second = _footprint(kind, a), _footprint(kind, b)
+    if first is None or second is None:
+        return False
+    whole = {(f[0], f[1]) for f in first | second if len(f) == 2}   # a whole chapter overlaps any of its verses
+    return bool(first & second) or any((f[0], f[1]) in whole for f in first | second if len(f) == 3)
 
 
 def classify_memorial(day: date, page: AelfDay, weekday: dict | None, weekday_id: str | None = None) -> dict | None:
@@ -156,7 +175,7 @@ def classify_memorial(day: date, page: AelfDay, weekday: dict | None, weekday_id
     if not is_complete(weekday):
         return None
     proper = {kind: citation for kind, citation in readings.items()
-              if kind != "gospel_acclamation" and _anchor(kind, citation) != _anchor(kind, weekday.get(kind, ""))}
+              if kind != "gospel_acclamation" and not _same_reading(kind, citation, weekday.get(kind, ""))}
     if "gospel" in proper and "gospel_acclamation" in readings:
         proper = {"gospel_acclamation": readings["gospel_acclamation"], **proper}
     record = {**_record(day, page), "use": "proper" if proper else "weekday"}
@@ -168,13 +187,15 @@ def classify_memorial(day: date, page: AelfDay, weekday: dict | None, weekday_id
 def apply_corrections(fill: dict, corrections: dict) -> list[str]:
     """Applies reviewed fixes for AELF typos. Returns the corrections that no longer match the harvested value."""
     stale = []
-    for set_id, kinds in corrections.get("sets", {}).items():
-        record = fill["sets"].get(set_id)
-        for kind, fix in kinds.items():
-            current = record["readings"].get(kind) if record else None
-            if current == fix["aelf"]:
-                record["readings"][kind] = fix["corrected"]
-                record.setdefault("corrections", {})[kind] = fix["why"]
-            elif current != fix["corrected"]:
-                stale.append(f"{set_id} {kind}: expected {fix['aelf']!r}, found {current!r}")
+    for part in ("sets", "memorials"):
+        for key, kinds in corrections.get(part, {}).items():
+            record = fill[part].get(key)
+            readings = (record or {}).get("readings") or {}
+            for kind, fix in kinds.items():
+                current = readings.get(kind)
+                if current == fix["aelf"]:
+                    readings[kind] = fix["corrected"]
+                    record.setdefault("corrections", {})[kind] = fix["why"]
+                elif current != fix["corrected"]:
+                    stale.append(f"{key} {kind}: expected {fix['aelf']!r}, found {current!r}")
     return stale

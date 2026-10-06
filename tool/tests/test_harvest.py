@@ -150,6 +150,16 @@ class HarvestTest(unittest.TestCase):
         self.assertEqual(proper["readings"], {"gospel_acclamation": "Psalm 103:21", "gospel": "Matthew 18:1-5, 10"})
         self.assertIsNone(classify_memorial(date(2025, 10, 2), page({}, day={"gospel": "Matthew 18:1-5"}), weekday))
 
+    def test_readings_that_differ_only_in_their_verse_selection_are_the_same_reading(self):
+        # US: Matthew 17:9a, 10-13; AELF: Matthew 17:10-13 (Saturday of the 2nd week of Advent, St. John of the Cross).
+        weekday = {"first_reading": "Sirach 48:1-4, 9-11", "responsorial_psalm": "Psalm 80:2ac, 3b, 15-16, 18-19",
+                   "gospel": "Matthew 17:9a, 10-13"}
+        aelf = {**weekday, "gospel_acclamation": "Luke 3:4, 6", "gospel": "Matthew 17:10-13"}
+        self.assertEqual(classify_memorial(date(2024, 12, 14), page({}, day=aelf), weekday)["use"], "weekday")
+        other_gospel = {**aelf, "gospel": "Matthew 17:14-20"}
+        self.assertEqual(classify_memorial(date(2024, 12, 14), page({}, day=other_gospel), weekday)["readings"],
+                         {"gospel_acclamation": "Luke 3:4, 6", "gospel": "Matthew 17:14-20"})
+
     def test_a_memorial_that_always_displaces_its_weekday_keeps_the_whole_page(self):
         record = classify_memorial(date(2026, 1, 2), page({}, day=READINGS), None, weekday_id="ChristmasWeekdayJan2/")
         self.assertEqual((record["use"], record["readings"], record["weekday"]), ("proper", READINGS, "ChristmasWeekdayJan2/"))
@@ -167,6 +177,13 @@ class CorrectionTest(unittest.TestCase):
         self.assertEqual(record["readings"]["gospel_acclamation"], "Mark 10:45")
         self.assertEqual(record["corrections"], {"gospel_acclamation": "typo"})
         self.assertEqual(apply_corrections(fill, self.CORRECTIONS), [])   # applying twice changes nothing
+
+    def test_memorial_readings_can_be_corrected_too(self):
+        fill = {"sets": {}, "memorials": {"BeheadingJohnBaptist": {"use": "proper", "readings": {"gospel": "Mark 6:17, 29"}}}}
+        corrections = {"memorials": {"BeheadingJohnBaptist": {"gospel": {
+            "aelf": "Mark 6:17, 29", "corrected": "Mark 6:17-29", "why": "typo"}}}}
+        self.assertEqual(apply_corrections(fill, corrections), [])
+        self.assertEqual(fill["memorials"]["BeheadingJohnBaptist"]["readings"]["gospel"], "Mark 6:17-29")
 
     def test_a_correction_that_no_longer_matches_is_reported(self):
         fill = {"sets": {"OrdWeekday8Wednesday/I": {"readings": {**READINGS, "gospel_acclamation": "Mark 10:44"}}},

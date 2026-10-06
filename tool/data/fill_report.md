@@ -67,7 +67,7 @@ Citations taken from AELF's daily Mass readings (api.aelf.org, General Roman Cal
 | MaryMotherOfGod/ | 2026-01-01 | Sainte Marie, Mère de Dieu / Solennité | Numbers 6:22-27 | Luke 2:16-21 |
 | NativityJohnBaptist/#day | 2026-06-24 | Nativité de Saint Jean Baptiste / Solennité | Isaiah 49:1-6 | Luke 1:57-66, 80 |
 | NativityJohnBaptist/#vigil | 2026-06-24 | Nativité de Saint Jean Baptiste / Solennité | Jeremiah 1:4-10 | Luke 1:5-17 |
-| NativityVirginMary/ | 2026-09-08 | La Nativité de la Bienheureuse Vierge Marie / Fête | Micah 5:1-4a|Romans 8:28, 30 | Matthew 1:1-16, 18-23|Matthew 1:18-23 |
+| NativityVirginMary/ | 2026-09-08 | La Nativité de la Bienheureuse Vierge Marie / Fête | Micah 5:1-4a|Romans 8:28-30 | Matthew 1:1-16, 18-23|Matthew 1:18-23 |
 | OrdSunday10/B | 2024-06-09 | 10ème dimanche du Temps Ordinaire (semaine II du Psautier) | Genesis 3:9-15 | Mark 3:20-35 |
 | OrdSunday11/B | 2024-06-16 | 11ème dimanche du Temps Ordinaire (semaine III du Psautier) | Ezekiel 17:22-24 | Mark 4:26-34 |
 | OrdSunday12/B | 2024-06-23 | 12ème dimanche du Temps Ordinaire (semaine IV du Psautier) | Job 38:1, 8-11 | Mark 4:35-41 |
@@ -485,13 +485,14 @@ Citations taken from AELF's daily Mass readings (api.aelf.org, General Roman Cal
 
 | Set | Reading | Why |
 |---|---|---|
+| NativityVirginMary/ | first_reading | AELF (2026-09-08) gives 'Rm 8, 28,30'; the reading is Romans 8:28-30. |
 | OrdWeekday8Wednesday/I | gospel_acclamation | AELF (2021-05-26) gives 'cf. Mt 10, 45', but Matthew 10 has 42 verses; the Gospel that day is Mark 10:32-45. |
 
 ## Memorials
 
 | Memorial | Page date | AELF day | Proper readings |
 |---|---|---|---|
-| BeheadingJohnBaptist | 2026-08-29 | samedi, 21ème Semaine du Temps Ordinaire / Martyre de S. Jean Baptiste | gospel_acclamation: Matthew 5:10; gospel: Mark 6:17, 29 |
+| BeheadingJohnBaptist | 2026-08-29 | samedi, 21ème Semaine du Temps Ordinaire / Martyre de S. Jean Baptiste | gospel_acclamation: Matthew 5:10; gospel: Mark 6:17-29 |
 | GuardianAngels | 2021-10-02 | samedi, 26ème Semaine du Temps Ordinaire / Ss Anges Gardiens | gospel_acclamation: Daniel 3:58; gospel: Matthew 18:1-5, 10 |
 | ImmaculateHeart | 2026-06-13 | samedi, de la férie, 10ème Semaine du Temps Ordinaire / Cœur immaculé de la bienheureuse Vierge Marie | gospel_acclamation: Luke 2:19; gospel: Luke 2:41-51 |
 | IndependenceDay | 2026-07-04 | samedi, 13ème Semaine du Temps Ordinaire / Ste Elisabeth du Portugal | none (weekday readings) |
@@ -538,12 +539,12 @@ Citations taken from AELF's daily Mass readings (api.aelf.org, General Roman Cal
 | StJohnBaptistDeLaSalle | 2016-04-07 | Jeudi, 2ème Semaine du Temps Pascal / S. Jean-Baptiste de la Salle, prêtre | none (weekday readings) |
 | StJohnBosco | 2026-01-31 | samedi, 3ème Semaine du Temps Ordinaire / S. Jean Bosco, prêtre | none (weekday readings) |
 | StJohnChrysostom | 2025-09-13 | samedi, de la férie, 23ème Semaine du Temps Ordinaire / S. Jean Chrysostome, évêque, docteur de l'Église | none (weekday readings) |
-| StJohnCross | 2024-12-14 | samedi, 2ème Semaine de l'Avent / S. Jean de la Croix, prêtre,docteur de l'Église | gospel_acclamation: Luke 3:4, 6; gospel: Matthew 17:10-13 |
+| StJohnCross | 2024-12-14 | samedi, 2ème Semaine de l'Avent / S. Jean de la Croix, prêtre,docteur de l'Église | none (weekday readings) |
 | StJohnNeumann | 2026-01-05 | Lundi après l'Epiphanie (semaine II du psautier) / de la férie | none (weekday readings) |
 | StJosaphat | 2025-11-12 | mercredi, 32ème semaine du Temps Ordinaire / S. Josaphat, évêque et martyr | none (weekday readings) |
 | StJustinMartyr | 2026-06-01 | lundi, 9ème Semaine du Temps Ordinaire (semaine I du Psautier) / S. Justin, martyr | none (weekday readings) |
 | StLeoGreat | 2025-11-10 | lundi, 32ème semaine du Temps Ordinaire (semaine IV du Psautier) / S. Léon le Grand, pape et docteur de l'Eglise | none (weekday readings) |
-| StLucySyracuse | 2025-12-13 | samedi, 2ème Semaine de l'Avent / Ste. Lucie, vierge et martyre | gospel_acclamation: Luke 3:4, 6; gospel: Matthew 17:10-13 |
+| StLucySyracuse | 2025-12-13 | samedi, 2ème Semaine de l'Avent / Ste. Lucie, vierge et martyre | none (weekday readings) |
 | StMartha | 2026-07-29 | mercredi, 17ème Semaine du Temps Ordinaire / Ste Marthe, Marie et S. Lazare | gospel_acclamation: John 8:12; gospel: Luke 10:38-42 |
 | StMartinTours | 2025-11-11 | mardi, 32ème semaine du Temps Ordinaire / S. Martin de Tours, évêque | none (weekday readings) |
 | StMaryMagdalene | 2026-07-22 | Ste Marie-Madeleine / Fête | first_reading: Song of Songs 3:1-4a|2 Corinthians 5:14-17; responsorial_psalm: Psalm 63:2, 3-4, 5-6, 8-9; gospel: John 20:1, 11-18 |

@@ -118,7 +118,11 @@ def main() -> int:
     parser.add_argument("--max-pages", type=int, default=650, help="network requests allowed (cached pages are free)")
     args = parser.parse_args()
 
-    needs = json.loads((DATA / "harvest_needed.json").read_text(encoding="utf-8"))
+    needed = DATA / "harvest_needed.json"
+    if not needed.exists():
+        print("Nothing to harvest: build_calendar.py found every reading it needs.")
+        return 0
+    needs = json.loads(needed.read_text(encoding="utf-8"))
     needs.sort(key=lambda need: need["kind"] == "memorial")   # sets first: memorials compare against weekday sets
     fill_path = DATA / "lectionary_fill.json"
     fill = json.loads(fill_path.read_text(encoding="utf-8")) if fill_path.exists() else {"sets": {}, "memorials": {}}
