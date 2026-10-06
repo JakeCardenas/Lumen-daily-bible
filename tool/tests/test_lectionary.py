@@ -3,7 +3,8 @@ from datetime import date
 
 from lumen_data.bible import DouayIndex
 from lumen_data.lectionary import (CalendarBuilder, advent_start, is_complete, ord_weekday_lectionary_number,
-                                   primary_event, rank_label, sunday_cycle, validate)
+                                   primary_event, rank_label, spot_check, sunday_cycle, underlying_weekday, validate,
+                                   weekday_name)
 from lumen_data.versification import TvtmsMap, Versifier
 
 WEEKDAY = {"first_reading": "Galatians 1:6-12", "responsorial_psalm": "Psalm 111:1b-2, 7-8",
@@ -74,6 +75,27 @@ class LectionaryTest(unittest.TestCase):
     def test_optional_memorials_and_vigils_are_never_primary(self):
         self.assertEqual(primary_event(events()[date(2026, 10, 3)])["event_key"], "OrdWeekday26Saturday")
 
+    def test_lenten_commemorations_are_never_primary(self):
+        day = [ev("2027-02-17", "LentWeekday1Wednesday", "Wednesday of the 1st Week of Lent", 0),
+               ev("2027-02-17", "SevenHolyFounders", "Seven Holy Founders of the Servite Order", 1)]
+        self.assertEqual(primary_event(day)["event_key"], "LentWeekday1Wednesday")
+
+    def test_a_memorial_replaces_the_weekday_listed_on_its_own_date(self):
+        by_date = {date(2027, 1, 4): [ev("2027-01-04", "DayAfterEpiphanyMonday", "Monday after Epiphany", 0),
+                                      ev("2027-01-04", "StElizabethSeton", "Saint Elizabeth Ann Seton", 3)]}
+        lect = lectionary()
+        lect["feriale_tempus_nativitatis"].update({"ChristmasWeekdayJan4": EMPTY, "DayAfterEpiphanyMonday": EMPTY})
+        self.assertEqual(underlying_weekday(date(2027, 1, 4), by_date, lect), ("DayAfterEpiphanyMonday", ""))
+        self.assertEqual(underlying_weekday(date(2026, 1, 4), {}, lect), ("ChristmasWeekdayJan4", ""))
+
+    def test_the_days_before_ash_wednesday_continue_the_previous_week(self):
+        y1 = {"liturgical_year": "YEAR I"}
+        by_date = {date(2035, 2, 3): [ev("2035-02-03", "OrdWeekday4Saturday", "Saturday", 0, **y1)],
+                   date(2035, 2, 5): [ev("2035-02-05", "StAgatha", "Saint Agatha", 3)],
+                   date(2035, 2, 6): [ev("2035-02-06", "StsPaulMiki", "Saints Paul Miki and Companions", 3)],
+                   date(2035, 2, 7): [ev("2035-02-07", "AshWednesday", "Ash Wednesday", 7)]}
+        self.assertEqual(underlying_weekday(date(2035, 2, 5), by_date, lectionary()), ("OrdWeekday5Monday", "I"))
+
     def test_rank_labels(self):
         self.assertIsNone(rank_label(events()[date(2026, 10, 4)][0]))
         self.assertEqual(rank_label(events()[date(2026, 9, 29)][0]), "Feast")
@@ -127,6 +149,51 @@ class LectionaryTest(unittest.TestCase):
         self.assertEqual([r["kind"] for r in result.calendar["sets"][set_id]],
                          ["first_reading", "responsorial_psalm", "gospel_acclamation", "gospel"])
 
+    def test_a_complete_memorial_set_needs_no_weekday(self):
+        fill = {"sets": {"OrdWeekday26Saturday/II": {"readings": WEEKDAY}},
+                "memorials": {"StThereseChildJesus": {"use": "proper", "readings": SUNDAY,
+                                                      "weekday": "OrdWeekday26Thursday/II"}}}
+        result = self.build(fill)
+        set_id = result.calendar["days"]["2026-10-01"]["masses"][0]["set"]
+        self.assertEqual({r["kind"]: r["citation"] for r in result.calendar["sets"][set_id]}["gospel"], SUNDAY["gospel"])
+        fill["memorials"]["StThereseChildJesus"]["weekday"] = "ChristmasWeekdayJan2/"
+        with self.assertRaises(ValueError):
+            self.build(fill)
+
+    def test_unclassified_memorials_also_ask_for_their_missing_weekday(self):
+        lect = lectionary()
+        lect["feriale_per_annum_II"]["OrdWeekday26Thursday"] = EMPTY
+        index = douay()
+        result = CalendarBuilder(events(), lect, {"sets": {}, "memorials": {}}, Versifier(index, TvtmsMap({})),
+                                 index).build(date(2026, 9, 28), date(2026, 10, 4))
+        self.assertIn("memorial:StThereseChildJesus", result.needs)
+        self.assertEqual(result.needs["OrdWeekday26Thursday/II"]["first_date"], "2026-10-01")
+
+    def test_a_day_of_only_optional_memorials_is_the_weekday(self):
+        # When two memorials fall together both become optional, and LitCal lists no weekday.
+        by_date = events()
+        by_date[date(2026, 10, 3)] = [
+            ev("2026-10-03", "ImmaculateHeart", "Immaculate Heart of the Blessed Virgin Mary", 2, color=["white"]),
+            ev("2026-10-03", "StAnthonyPadua", "Saint Anthony of Padua", 2, color=["white"]),
+        ]
+        fill = {"sets": {"OrdWeekday26Saturday/II": {"readings": WEEKDAY}},
+                "memorials": {"StThereseChildJesus": {"use": "weekday"}}}
+        index = douay()
+        result = CalendarBuilder(by_date, lectionary(), fill, Versifier(index, TvtmsMap({})), index).build(
+            date(2026, 9, 28), date(2026, 10, 4))
+        day = result.calendar["days"]["2026-10-03"]
+        self.assertEqual(day["name"], "Saturday of the 26th Week of Ordinary Time")
+        self.assertEqual(day["colors"], ["green"])
+        self.assertIsNone(day["rank"])
+        self.assertEqual(day["optional"], ["Immaculate Heart of the Blessed Virgin Mary", "Saint Anthony of Padua"])
+        self.assertEqual(day["masses"], [{"title": None, "set": "OrdWeekday26Saturday/II"}])
+
+    def test_weekday_names(self):
+        self.assertEqual(weekday_name("OrdWeekday1Monday"), "Monday of the 1st Week of Ordinary Time")
+        self.assertEqual(weekday_name("OrdWeekday22Tuesday"), "Tuesday of the 22nd Week of Ordinary Time")
+        self.assertEqual(weekday_name("OrdWeekday13Thursday"), "Thursday of the 13th Week of Ordinary Time")
+        self.assertEqual(weekday_name("OrdWeekday33Saturday"), "Saturday of the 33rd Week of Ordinary Time")
+
     def test_open_data_citations_that_do_not_convert_are_harvested_instead(self):
         lect = lectionary()
         lect["feriale_per_annum_II"]["OrdWeekday26Monday"] = {**WEEKDAY, "first_reading": "Galatians 17:20b-25"}
@@ -138,6 +205,18 @@ class LectionaryTest(unittest.TestCase):
         need = result.needs["OrdWeekday26Monday/II"]
         self.assertEqual(need["kind"], "set")
         self.assertIn("Galatians 17:20", need["reason"])
+        # Once harvested, the harvested set wins over the open data.
+        fill["sets"]["OrdWeekday26Monday/II"] = {"readings": WEEKDAY}
+        result = CalendarBuilder(events(), lect, fill, Versifier(index, TvtmsMap({})), index).build(
+            date(2026, 9, 28), date(2026, 10, 4))
+        self.assertNotIn("OrdWeekday26Monday/II", result.needs)
+        first = result.calendar["sets"]["OrdWeekday26Monday/II"][0]
+        self.assertEqual(first["citation"], WEEKDAY["first_reading"])
+
+    def test_spot_checks_only_look_inside_the_calendar(self):
+        # December 8, 2030 is a Sunday, but a calendar ending in February 2030 has no December to check.
+        problems = spot_check({"start": "2030-01-01", "end": "2030-02-23", "days": {}, "sets": {}})
+        self.assertFalse([p for p in problems if "Immaculate" in p])
 
     def test_validate_reports_missing_gospel(self):
         calendar = {"start": "2026-10-04", "end": "2026-10-04",

@@ -18,11 +18,16 @@ def ssl_context() -> ssl.SSLContext:
     return context
 
 
+class BudgetExhausted(Exception):
+    """The fetcher has made all the network requests it was allowed; cached pages still work."""
+
+
 class Fetcher:
     """Fetches each URL once, caching bodies on disk. Network requests are spaced by min_interval seconds."""
 
-    def __init__(self, min_interval: float = 0.0):
+    def __init__(self, min_interval: float = 0.0, max_network: int | None = None):
         self.min_interval = min_interval
+        self.max_network = max_network
         self.network_requests = 0
         self._last = 0.0
 
@@ -31,6 +36,8 @@ class Fetcher:
         if cache_file.exists():
             data = cache_file.read_bytes()
             return None if data == _MISSING else data
+        if self.max_network is not None and self.network_requests >= self.max_network:
+            raise BudgetExhausted(url)
         wait = self.min_interval - (time.monotonic() - self._last)
         if wait > 0:
             time.sleep(wait)

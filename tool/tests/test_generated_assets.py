@@ -16,9 +16,10 @@ class GeneratedAssetsTest(unittest.TestCase):
         cls.calendar = json.loads(CALENDAR.read_text(encoding="utf-8"))
         cls.douay = DouayIndex(json.loads(BIBLE.read_text(encoding="utf-8")))
 
-    def test_covers_2026_through_2035(self):
-        self.assertEqual((self.calendar["start"], self.calendar["end"]), ("2026-01-01", "2035-12-31"))
-        self.assertEqual(len(self.calendar["days"]), 3652)
+    def test_covers_2026_until_the_first_unavailable_sunday(self):
+        # Ends before the 7th Sunday of Ordinary Time, Year B (2030-02-24), which AELF cannot supply yet.
+        self.assertEqual((self.calendar["start"], self.calendar["end"]), ("2026-01-01", "2030-02-23"))
+        self.assertEqual(len(self.calendar["days"]), 1515)
 
     def test_every_day_validates(self):
         self.assertEqual(validate(self.calendar, self.douay), [])

@@ -110,11 +110,15 @@ class DouayPassage:
 
 
 class Versifier:
-    def __init__(self, douay: DouayIndex, hebrew: TvtmsMap, greek: TvtmsMap | None = None, overrides: dict | None = None):
+    def __init__(self, douay: DouayIndex, hebrew: TvtmsMap, greek: TvtmsMap | None = None, overrides: dict | None = None,
+                 douay_joins: dict | None = None):
         self.douay = douay
         self.hebrew = hebrew
         self.greek = greek
         self.overrides = overrides or {}
+        # Reviewed: verses Douay-Rheims joins where TVTMS records no difference.
+        # {"1TH": {"4": [[greek_first, greek_last, douay_first], ...]}}
+        self.douay_joins = douay_joins or {}
 
     def convert(self, citation: Citation) -> DouayPassage:
         book = BY_ID[citation.book]
@@ -154,7 +158,7 @@ class Versifier:
         elif book.tradition == "latin":
             # The New Testament follows the Greek, which the Vulgate splits differently in a few places (Mark 9, Acts 14...).
             refs = self.greek.latin_for(book.tvtms, int(point.chapter), point.verse) if self.greek and book.testament == "new" else None
-            ref = _pick(refs or [(int(point.chapter), point.verse)], point.part, first)
+            ref = _pick(refs or [self._joined(book.id, int(point.chapter), point.verse)], point.part, first)
         else:
             refs = self.hebrew.latin_for(book.tvtms, int(point.chapter), point.verse)
             if not refs:
@@ -167,6 +171,12 @@ class Versifier:
             raise VersificationError(
                 f"{book.modern} {point.chapter}:{point.verse} maps to Douay-Rheims {ref[0]}:{ref[1]}, which does not exist")
         return ref
+
+    def _joined(self, book_id: str, chapter: int, verse: int) -> Ref:
+        for greek_first, greek_last, douay_first in self.douay_joins.get(book_id, {}).get(str(chapter), []):
+            if greek_first <= verse <= greek_last:
+                return chapter, douay_first + verse - greek_first
+        return chapter, verse
 
     def _esther_addition(self, book: Book, point: Point) -> Ref:
         if book.id != "EST":

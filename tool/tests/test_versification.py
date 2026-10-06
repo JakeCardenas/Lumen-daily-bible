@@ -89,6 +89,17 @@ class VersificationTest(unittest.TestCase):
         self.assertEqual(passage.ranges, ((9, 1, 9, 9),))
         self.assertTrue(passage.differs)
 
+    def test_reviewed_douay_joins_shift_the_verses_that_follow(self):
+        # As in 1 Thessalonians 4: Douay-Rheims joins verses 11 and 12, so 13 onward is one lower.
+        joins = {"MAT": {"5": [[12, 12, 11], [13, 48, 12]]}}
+        versifier = Versifier(DOUAY, TvtmsMap.parse(TVTMS), TvtmsMap.parse(TVTMS, "Greek"), douay_joins=joins)
+        [citation] = parse("Matthew 5:12-14, 48")
+        passage = versifier.convert(citation)
+        self.assertEqual(passage.ranges, ((5, 11, 5, 13), (5, 47, 5, 47)))
+        self.assertTrue(passage.differs)
+        [unchanged] = parse("Matthew 5:1-11")
+        self.assertEqual(versifier.convert(unchanged).ranges, ((5, 1, 5, 11),))
+
     def test_esther_additions(self):
         self.assertEqual(self.convert("Esther C:12, 14-16, 23-25").ranges, ((14, 1, 14, 1), (14, 3, 14, 5), (14, 12, 14, 14)))
 

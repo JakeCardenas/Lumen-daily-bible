@@ -61,9 +61,9 @@ def is_vigil(event: dict) -> bool:
 
 
 def primary_event(events: list[dict]) -> dict:
-    """The celebration of the day. Optional memorials (grade 2) and vigil Masses never qualify."""
+    """The celebration of the day. Commemorations, optional memorials (grades 1-2) and vigil Masses never qualify."""
     regular = [e for e in events if not is_vigil(e)]
-    candidates = [e for e in regular if e["grade"] != 2] or regular
+    candidates = [e for e in regular if e["grade"] not in (1, 2)] or regular
     if not candidates:
         raise ValueError("a day has only vigil Masses")
     return max(candidates, key=lambda e: e["grade"])
@@ -117,6 +117,16 @@ def is_complete(readings) -> bool:
     return True
 
 
+def weekday_name(key: str) -> str:
+    """'OrdWeekday22Tuesday' -> 'Tuesday of the 22nd Week of Ordinary Time', as LitCal names them."""
+    match = _ORD_WEEKDAY.match(key)
+    if match is None:
+        raise ValueError(f"not an Ordinary Time weekday: {key}")
+    week = int(match.group("week"))
+    suffix = "th" if 11 <= week % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(week % 10, "th")
+    return f"{match.group('day')} of the {week}{suffix} Week of Ordinary Time"
+
+
 def ord_weekday_lectionary_number(key: str) -> int | None:
     """US Lectionary number of an Ordinary Time weekday, e.g. OrdWeekday27Monday -> 461."""
     match = _ORD_WEEKDAY.match(key)
@@ -136,12 +146,21 @@ def label_for(kind: str, event: dict) -> str:
 
 def underlying_weekday(day: date, by_date: dict[date, list[dict]], lect: dict[str, dict]) -> tuple[str, str] | None:
     """(key, cycle) of the weekday that a memorial on this date replaces."""
+    for event in by_date.get(day, []):
+        if event["grade"] == 0 and not is_vigil(event):
+            return event["event_key"], cycle_of(event)
     monday = day - timedelta(days=day.weekday())
     for offset in range(6):
         for event in by_date.get(monday + timedelta(days=offset), []):
             match = _WEEKDAY_KEY.match(event["event_key"])
             if match:
                 return match.group("prefix") + DAY_NAMES[day.weekday()], cycle_of(event)
+    # The Monday and Tuesday before Ash Wednesday: the week after the previous one.
+    for offset in range(1, 7):
+        for event in by_date.get(monday - timedelta(days=offset), []):
+            match = _ORD_WEEKDAY.match(event["event_key"])
+            if match:
+                return f"OrdWeekday{int(match.group('week')) + 1}{DAY_NAMES[day.weekday()]}", cycle_of(event)
     for prefix in ("ChristmasWeekday", "AdventWeekday"):
         key = f"{prefix}{MONTHS[day.month - 1]}{day.day}"
         if find_entry(lect, key, "") is not None:
@@ -217,6 +236,8 @@ class CalendarBuilder:
         if not events:
             raise ValueError(f"no calendar events for {day}")
         primary = primary_event(events)
+        if primary["grade"] in (1, 2):
+            return self._weekday_of_optional_memorials(events, primary, day)
         masses = self._masses(primary, day)
         for event in events:
             if is_vigil(event) and event.get("is_vigil_for") in VIGIL_FOR:
@@ -226,8 +247,24 @@ class CalendarBuilder:
             "season": primary.get("liturgical_season_lcl") or "",
             "colors": list(primary.get("color") or []),
             "rank": rank_label(primary),
-            "optional": [e["name"] for e in events if e["grade"] == 2 and not is_vigil(e) and e is not primary],
+            "optional": [e["name"] for e in events if e["grade"] in (1, 2) and not is_vigil(e) and e is not primary],
             "masses": [m for m in masses if m is not None],
+        }
+
+    def _weekday_of_optional_memorials(self, events: list[dict], primary: dict, day: date) -> dict:
+        """Two memorials on one day both become optional, and LitCal lists no weekday: the day is that weekday."""
+        weekday = underlying_weekday(day, self.by_date, self.lect)
+        if weekday is None or not _ORD_WEEKDAY.match(weekday[0]):
+            raise ValueError(f"{day} has only optional memorials and no Ordinary Time weekday")
+        key, cycle = weekday
+        readings = variants(self._entry(key, cycle, day))[0][1]
+        return {
+            "name": weekday_name(key),
+            "season": primary.get("liturgical_season_lcl") or "",
+            "colors": ["green"],
+            "rank": None,
+            "optional": [e["name"] for e in events if e["grade"] in (1, 2) and not is_vigil(e)],
+            "masses": [m for m in [self._mass(None, f"{key}/{cycle}", readings, primary, day)] if m is not None],
         }
 
     def _masses(self, event: dict, day: date) -> list[dict | None]:
@@ -250,17 +287,25 @@ class CalendarBuilder:
     def _memorial_mass(self, event: dict, day: date) -> dict | None:
         key = event["event_key"]
         memorial = self.fill["memorials"].get(key)
-        if memorial is None:
-            self.needs.setdefault(f"memorial:{key}", {"kind": "memorial", "key": key, "first_date": day.isoformat()})
-            return None
         weekday = underlying_weekday(day, self.by_date, self.lect)
         if weekday is None:
             raise ValueError(f"cannot find the weekday that {key} replaces on {day}")
         weekday_key, weekday_cycle = weekday
         weekday_id = f"{weekday_key}/{weekday_cycle}"
         readings = variants(self._entry(weekday_key, weekday_cycle, day))[0][1]
+        weekday_known = is_complete(readings) or weekday_id in self.fill["sets"]
+        if memorial is None:
+            self.needs.setdefault(f"memorial:{key}", {"kind": "memorial", "key": key, "first_date": day.isoformat()})
+            if not weekday_known:   # harvested first, so the memorial can be compared with it
+                self.needs.setdefault(weekday_id, {"kind": "set", "set": weekday_id, "first_date": day.isoformat()})
+            return None
         if memorial["use"] != "proper":
             return self._mass(None, weekday_id, readings, event, day)
+        if is_complete(memorial["readings"]):
+            # A whole set, taken where the weekday could not be known (e.g. Saints Basil and Gregory, January 2).
+            if memorial.get("weekday", weekday_id) != weekday_id:
+                raise ValueError(f"{key} on {day} replaces {weekday_id}, not {memorial['weekday']}: harvest it again")
+            return self._mass(None, f"{weekday_id}+{key}", ordered_readings(memorial["readings"]), event, day)
         # The memorial's own readings (often just the Gospel) replace those of the weekday.
         base = readings if is_complete(readings) else self.fill["sets"].get(weekday_id, {}).get("readings")
         if base is None:
@@ -284,7 +329,9 @@ class CalendarBuilder:
 
     def _mass(self, title: str | None, set_id: str, readings, event: dict, day: date) -> dict | None:
         if set_id not in self.sets:
-            source = readings if is_complete(readings) else self.fill["sets"].get(set_id, {}).get("readings")
+            # A harvested set exists only where the open data was missing or wrong, so it wins.
+            harvested = self.fill["sets"].get(set_id, {}).get("readings")
+            source = harvested if harvested is not None else readings if is_complete(readings) else None
             if source is None:
                 self.needs.setdefault(set_id, {"kind": "set", "set": set_id, "first_date": day.isoformat()})
                 return None
@@ -294,7 +341,7 @@ class CalendarBuilder:
                 self.missing[missing.key] = missing.proposal
                 return None
             except VersificationError as error:
-                if source is not readings:
+                if source is harvested:
                     raise   # harvested data must convert; fix it by hand
                 # A bad citation in the open data (e.g. "Jude 17:20b-25"): take this set from USCCB instead.
                 self.needs.setdefault(set_id, {"kind": "set", "set": set_id, "first_date": day.isoformat(),
@@ -348,8 +395,9 @@ def spot_check(calendar: dict) -> list[str]:
         ("2026-10-05 readings", lambda: citation("2026-10-05", "first_reading") == "Galatians1:6-12"
             and citation("2026-10-05", "gospel") == "Luke10:25-37"),
     ]
-    for year in range(date.fromisoformat(calendar["start"]).year, date.fromisoformat(calendar["end"]).year + 1):
-        if date(year, 12, 8).weekday() == 6:
+    start, end = date.fromisoformat(calendar["start"]), date.fromisoformat(calendar["end"])
+    for year in range(start.year, end.year + 1):
+        if date(year, 12, 8).weekday() == 6 and start <= date(year, 12, 9) <= end:
             iso = f"{year}-12-09"
             checks.append((f"Immaculate Conception moved in {year}",
                            lambda iso=iso: "Immaculate Conception" in days[iso]["name"]))

@@ -1,4 +1,4 @@
-"""Builds assets/liturgy/calendar_us.json (US calendar, 2026-2035).
+"""Builds assets/liturgy/calendar_us.json (US calendar, January 2026 to February 2030).
 
 Run from tool/: python3 build_calendar.py
 Exit codes: 0 written; 2 run harvest_aelf.py first; 3 review tool/data/dc_overrides_todo.json;
@@ -15,7 +15,8 @@ from lumen_data.net import Fetcher
 from lumen_data.paths import ASSETS, CACHE, DATA
 from lumen_data.versification import TvtmsMap, Versifier
 
-START, END = date(2026, 1, 1), date(2035, 12, 31)
+# Ends before the 7th Sunday of Ordinary Time, Year B (2030-02-24): AELF has no page for it yet.
+START, END = date(2026, 1, 1), date(2030, 2, 23)
 TVTMS_URL = ("https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Versification/"
              "TVTMS%20-%20Translators%20Versification%20Traditions%20with%20Methodology%20for%20Standardisation"
              "%20for%20Eng%2BHeb%2BLat%2BGrk%2BOthers%20-%20STEPBible.org%20CC%20BY.txt")
@@ -37,7 +38,7 @@ def main() -> int:
     douay = DouayIndex(json.loads((ASSETS / "bible" / "douay_rheims.json").read_text(encoding="utf-8")))
     tvtms = fetcher.get(TVTMS_URL, CACHE / "tvtms.txt").decode("utf-8", "replace")
     versifier = Versifier(douay, TvtmsMap.parse(tvtms, "Hebrew"), TvtmsMap.parse(tvtms, "Greek"),
-                          load_json(DATA / "dc_overrides.json", {}))
+                          load_json(DATA / "dc_overrides.json", {}), load_json(DATA / "douay_joins.json", {}))
     fill = load_json(DATA / "lectionary_fill.json", {"sets": {}, "memorials": {}})
     result = CalendarBuilder(by_date, lect, fill, versifier, douay).build(START, END)
 

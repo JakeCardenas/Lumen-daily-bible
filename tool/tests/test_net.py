@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lumen_data.net import Fetcher, ssl_context
+from lumen_data.net import BudgetExhausted, Fetcher, ssl_context
 
 
 class FetcherTest(unittest.TestCase):
@@ -26,3 +26,13 @@ class FetcherTest(unittest.TestCase):
             cache = Path(tmp) / "missing.html"
             cache.write_bytes(b"__lumen_404__")
             self.assertIsNone(Fetcher().get("https://invalid.example/missing", cache))
+
+    def test_a_spent_budget_still_serves_the_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "page.html"
+            cache.write_bytes(b"cached")
+            fetcher = Fetcher(max_network=0)
+            self.assertEqual(fetcher.get("https://invalid.example/page", cache), b"cached")
+            with self.assertRaises(BudgetExhausted):
+                fetcher.get("https://invalid.example/other", Path(tmp) / "other.html")
+            self.assertEqual(fetcher.network_requests, 0)
