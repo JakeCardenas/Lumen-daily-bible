@@ -26,6 +26,7 @@ flutter:
   assets:
     - assets/bible/
     - assets/licenses/
+    - assets/liturgy/
     - assets/moods/
   fonts:
     - family: Literata

@@ -1,0 +1,12 @@
+{
+  "_about": "Reviewed fixes for typos in AELF's references, applied by harvest_aelf.py and listed in fill_report.md.",
+  "sets": {
+    "OrdWeekday8Wednesday/I": {
+      "gospel_acclamation": {
+        "aelf": "Matthew 10:45",
+        "corrected": "Mark 10:45",
+        "why": "AELF (2021-05-26) gives 'cf. Mt 10, 45', but Matthew 10 has 42 verses; the Gospel that day is Mark 10:32-45."
+      }
+    }
+  }
+}

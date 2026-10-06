@@ -1,0 +1,9 @@
+STEPBible TVTMS (Translators Versification Traditions with Methodology for Standardisation)
+Data created by www.STEPBible.org based on work at Tyndale House, Cambridge.
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/STEPBible/STEPBible-Data
+
+Lumen uses this data while building its calendar to convert Lectionary verse numbers to
+Douay-Rheims numbering. The converted verse ranges are part of Lumen's calendar data; the
+TVTMS file itself is not redistributed.

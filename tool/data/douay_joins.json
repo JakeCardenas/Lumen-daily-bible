@@ -1,0 +1,20 @@
+{
+  "_about": "Verses Douay-Rheims (eBible engDRA) joins where STEPBible TVTMS records no difference. Each rule: [first Greek verse, last Greek verse, Douay verse of the first]. Checked against the text.",
+  "ACT": {
+    "19": [
+      [41, 41, 40]
+    ]
+  },
+  "1TH": {
+    "4": [
+      [12, 12, 11],
+      [13, 18, 12]
+    ]
+  },
+  "2TH": {
+    "2": [
+      [11, 11, 10],
+      [12, 17, 11]
+    ]
+  }
+}
